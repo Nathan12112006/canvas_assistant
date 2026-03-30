@@ -1,3 +1,3 @@
 window.CANVAS_ASSISTANT_CONFIG = {
-  apiBaseUrl: ""
+  apiBaseUrl: "https://canvas-assistant-api.onrender.com"
 };
