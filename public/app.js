@@ -442,7 +442,7 @@ function renderCalendar() {
     const date = new Date(start);
     date.setDate(start.getDate() + offset);
     const items = (assignmentsByDay.get(isoDay(date)) || []).sort((a, b) => new Date(a.due_at) - new Date(b.due_at));
-    const classes = ["calendar-day"];
+    const classes = ["calendar-day", calendarHeatClass(items.length)];
     if (date.getMonth() !== month) classes.push("is-outside");
     if (isoDay(date) === isoDay(new Date())) classes.push("is-today");
     cells.push(`
@@ -877,6 +877,14 @@ function renderAssignmentCard(item) {
   `;
 }
 
+function calendarHeatClass(count) {
+  if (count >= 4) return "heat-4";
+  if (count === 3) return "heat-3";
+  if (count === 2) return "heat-2";
+  if (count === 1) return "heat-1";
+  return "heat-0";
+}
+
 function urgencyClass(item) {
   if (item.isMissing) return "urgent";
   const days = daysUntil(item.due_at);
@@ -994,6 +1002,8 @@ async function hashPassword(password, salt) {
 
 function qs(selector) { return document.querySelector(selector); }
 function qsa(selector) { return Array.from(document.querySelectorAll(selector)); }
+
+
 
 
 

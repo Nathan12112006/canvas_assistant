@@ -448,6 +448,11 @@ a { color: inherit; }
   gap: 10px;
 }
 
+.calendar-day.heat-0 { background: rgba(255, 255, 255, 0.58); }
+.calendar-day.heat-1 { background: linear-gradient(180deg, rgba(255, 248, 222, 0.9), rgba(255, 255, 255, 0.62)); }
+.calendar-day.heat-2 { background: linear-gradient(180deg, rgba(255, 232, 190, 0.92), rgba(255, 250, 239, 0.68)); }
+.calendar-day.heat-3 { background: linear-gradient(180deg, rgba(247, 196, 154, 0.94), rgba(255, 246, 237, 0.7)); }
+.calendar-day.heat-4 { background: linear-gradient(180deg, rgba(243, 179, 171, 0.96), rgba(255, 240, 237, 0.76)); }
 .calendar-day.is-outside { opacity: 0.45; }
 .calendar-day.is-today { outline: 2px solid rgba(181, 83, 34, 0.45); }
 .calendar-day-number {
@@ -615,6 +620,8 @@ a { color: inherit; }
 
 .home-single-column { grid-template-columns: minmax(0, 1fr); }
 .home-single-column .setup-copy { max-width: 900px; }
+
+
 
 
 
