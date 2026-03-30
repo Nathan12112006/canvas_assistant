@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas Assistant Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body>
+  <div class="app-shell auth-page-shell">
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <section id="setupScreen" class="setup-screen auth-screen">
+      <div class="auth-shell auth-shell-narrow">
+        <header class="auth-nav">
+          <a href="/" class="auth-home-link">Back to homepage</a>
+          <div class="auth-nav-brand">
+            <div class="eyebrow">Canvas Assistant</div>
+            <div class="auth-nav-copy">Dedicated account access</div>
+          </div>
+        </header>
+
+        <div class="auth-layout auth-layout-single">
+          <section class="auth-card-shell auth-card-shell-wide">
+            <div class="auth-card-head">
+              <div>
+                <div class="card-heading auth-card-heading">Login or create your account</div>
+                <p class="auth-card-subcopy">Signup includes your Canvas domain and token once. Later logins only need username and password.</p>
+              </div>
+              <div class="auth-tabs">
+                <button id="authTabLogin" class="studio-tab active">Login</button>
+                <button id="authTabSignup" class="studio-tab">Sign Up</button>
+              </div>
+            </div>
+
+            <div id="loginView" class="auth-view active">
+              <div class="auth-view-header">
+                <h2>Welcome back</h2>
+                <p>Use your saved account to restore the dashboard and Canvas connection.</p>
+              </div>
+
+              <label class="field-label" for="loginUsernameInput">Username</label>
+              <input id="loginUsernameInput" class="text-input" type="text" placeholder="Enter your username" autocomplete="username">
+
+              <label class="field-label" for="loginPasswordInput">Password</label>
+              <input id="loginPasswordInput" class="text-input" type="password" placeholder="Enter your password" autocomplete="current-password">
+
+              <div class="button-row auth-action-row">
+                <button id="loginBtn" class="primary-btn">Login</button>
+              </div>
+
+              <div class="auth-note-card">
+                <strong>Already connected before?</strong>
+                <span>You do not need to re-enter the Canvas domain or token here. Those values stay attached to the account created during signup.</span>
+              </div>
+            </div>
+
+            <div id="signupView" class="auth-view">
+              <div class="auth-view-header">
+                <h2>Create your account</h2>
+                <p>Signup includes the Canvas information once, so later login is faster.</p>
+              </div>
+
+              <div class="auth-form-grid two-up">
+                <div>
+                  <label class="field-label" for="signupUsernameInput">Username</label>
+                  <input id="signupUsernameInput" class="text-input" type="text" placeholder="Choose a username" autocomplete="username">
+                </div>
+                <div>
+                  <label class="field-label" for="signupPasswordInput">Password</label>
+                  <input id="signupPasswordInput" class="text-input" type="password" placeholder="Create a password" autocomplete="new-password">
+                </div>
+              </div>
+
+              <label class="field-label" for="signupDomainInput">Canvas domain</label>
+              <input id="signupDomainInput" class="text-input" type="text" placeholder="yourschool.instructure.com" autocomplete="off">
+              <div class="helper-copy">Use the part of your Canvas URL before the first slash after the domain. Example: <code>school.instructure.com</code>.</div>
+
+              <label class="field-label" for="signupTokenInput">Canvas access token</label>
+              <input id="signupTokenInput" class="text-input" type="password" placeholder="Paste your Canvas token" autocomplete="off">
+              <div class="helper-copy">Create it in Canvas under <strong>Account -> Settings -> Approved Integrations -> New Access Token</strong>.</div>
+
+              <div class="auth-inline-guide">
+                <div class="auth-guide-item">
+                  <strong>Why we ask now</strong>
+                  <span>So the account can reconnect to Canvas later without asking for these details every login.</span>
+                </div>
+                <div class="auth-guide-item">
+                  <strong>If the token expires</strong>
+                  <span>You can replace it later from the dashboard settings panel after login.</span>
+                </div>
+              </div>
+
+              <div class="button-row auth-action-row">
+                <button id="signupBtn" class="primary-btn">Create Account</button>
+              </div>
+            </div>
+
+            <div id="statusBar" class="status-bar idle">Sign up once to save your Canvas connection. Future logins only need username and password.</div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <section id="dashboardScreen" class="dashboard-screen hidden">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">Canvas Assistant</div>
+          <h2 id="welcomeTitle">Dashboard</h2>
+          <p id="welcomeCopy" class="topbar-copy">Your classes, schedule, and AI workspace in one place.</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshBtn" class="ghost-btn">Refresh Canvas</button>
+          <button id="logoutBtn" class="ghost-btn danger">Log Out</button>
+        </div>
+      </header>
+
+      <main class="dashboard-grid">
+        <aside class="sidebar">
+          <section class="panel profile-panel">
+            <div class="card-heading">Student</div>
+            <div class="profile-row">
+              <div id="profileAvatar" class="profile-avatar">CA</div>
+              <div>
+                <div id="profileName" class="profile-name">Canvas Student</div>
+                <div id="profileMeta" class="profile-meta">Waiting for Canvas data</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel profile-panel">
+            <div class="card-heading">Account Settings</div>
+            <p class="section-copy">Update your saved Canvas domain or token here if they change or expire.</p>
+            <label class="field-label" for="settingsDomainInput">Canvas domain</label>
+            <input id="settingsDomainInput" class="text-input" type="text" placeholder="yourschool.instructure.com" autocomplete="off">
+            <label class="field-label" for="settingsTokenInput">Canvas access token</label>
+            <input id="settingsTokenInput" class="text-input" type="password" placeholder="Update your Canvas token" autocomplete="off">
+            <div class="button-row">
+              <button id="saveAccountSettingsBtn" class="primary-btn">Save Canvas Settings</button>
+            </div>
+            <div id="accountStatus" class="helper-copy">Saved changes update this account and keep future logins connected.</div>
+          </section>
+
+          <section class="panel metrics-panel">
+            <div class="card-heading">Overview</div>
+            <div id="overviewStats" class="stats-grid"></div>
+          </section>
+
+          <section class="panel filter-panel">
+            <div class="card-heading">Visible Courses</div>
+            <p class="section-copy">Hide classes you do not want included in the calendar and AI tools.</p>
+            <div id="courseFilterList" class="filter-list">
+              <div class="empty-state tight">Load Canvas to manage course visibility.</div>
+            </div>
+          </section>
+
+          <section class="panel agenda-panel">
+            <div class="card-heading">Priority Queue</div>
+            <div id="priorityList" class="mini-list"></div>
+          </section>
+        </aside>
+
+        <section class="workspace">
+          <section class="panel hero-panel">
+            <div>
+              <div class="card-heading">This Week At A Glance</div>
+              <p class="section-copy">See what needs attention first, then use the tools below without losing course context.</p>
+            </div>
+            <div id="syncStamp" class="sync-stamp">Not synced yet</div>
+          </section>
+
+          <section class="panel calendar-panel">
+            <div class="panel-header">
+              <div>
+                <div class="card-heading">Calendar</div>
+                <p class="section-copy">Assignments due this month, organized by date.</p>
+              </div>
+              <div id="calendarMonthLabel" class="calendar-month-label"></div>
+            </div>
+            <div id="calendarGrid" class="calendar-grid"></div>
+            <div id="calendarAgenda" class="calendar-agenda"></div>
+          </section>
+
+          <section class="panel studio-panel">
+            <div class="studio-tabs">
+              <button class="studio-tab active" data-tab="chat">AI Chat</button>
+              <button class="studio-tab" data-tab="notes">Study Notes</button>
+              <button class="studio-tab" data-tab="homework">Homework Help</button>
+              <button class="studio-tab" data-tab="essay">Essay Help</button>
+              <button class="studio-tab" data-tab="scorer">Draft Scorer</button>
+            </div>
+
+            <section class="studio-view active" id="tab-chat">
+              <div class="tool-grid">
+                <div>
+                  <label class="field-label" for="chatCourseSelect">Course context</label>
+                  <select id="chatCourseSelect" class="text-input"></select>
+                </div>
+                <div>
+                  <div class="field-label">Concept explainer</div>
+                  <div class="helper-copy">Select a course when you want explanations tied to that class's vocabulary, assignments, and announcement language.</div>
+                </div>
+              </div>
+              <div id="chatMessages" class="chat-messages"></div>
+              <div class="chat-input-row">
+                <textarea id="chatInput" class="text-area compact" rows="3" placeholder="Ask what to work on next, or explain a concept using your actual course context."></textarea>
+                <button id="chatSendBtn" class="primary-btn">Send</button>
+              </div>
+            </section>
+
+            <section class="studio-view" id="tab-notes">
+              <div class="tool-grid">
+                <div>
+                  <label class="field-label" for="notesCourseSelect">Course</label>
+                  <select id="notesCourseSelect" class="text-input"></select>
+                </div>
+                <div>
+                  <label class="field-label" for="notesFocusInput">Focus</label>
+                  <input id="notesFocusInput" class="text-input" type="text" placeholder="Midterm review, week 5, chapter 8">
+                </div>
+              </div>
+              <div class="helper-copy">Study notes automatically keep professor patterns in mind based on assignments, rubrics, and announcements.</div>
+              <button id="notesBtn" class="primary-btn">Generate Notes</button>
+              <div id="notesOutput" class="result-area"></div>
+            </section>
+
+            <section class="studio-view" id="tab-homework">
+              <div class="tool-grid">
+                <div>
+                  <label class="field-label" for="homeworkCourseSelect">Course</label>
+                  <select id="homeworkCourseSelect" class="text-input"></select>
+                </div>
+                <div>
+                  <label class="field-label" for="homeworkAssignmentSelect">Assignment</label>
+                  <select id="homeworkAssignmentSelect" class="text-input"></select>
+                </div>
+              </div>
+              <label class="field-label" for="homeworkNeedInput">What help do you need?</label>
+              <textarea id="homeworkNeedInput" class="text-area" rows="3" placeholder="Explain the method, check my logic, help me outline the solution, debug the code..."></textarea>
+              <label class="field-label" for="homeworkWorkInput">Prompt or current work</label>
+              <textarea id="homeworkWorkInput" class="text-area" rows="7" placeholder="Paste the assignment prompt, your draft, equations, code, or questions here."></textarea>
+              <button id="homeworkBtn" class="primary-btn">Get Homework Help</button>
+              <div id="homeworkOutput" class="result-area"></div>
+            </section>
+
+            <section class="studio-view" id="tab-essay">
+              <div class="tool-grid">
+                <div>
+                  <label class="field-label" for="essayCourseSelect">Course</label>
+                  <select id="essayCourseSelect" class="text-input"></select>
+                </div>
+                <div>
+                  <label class="field-label" for="essayModeSelect">Essay task</label>
+                  <select id="essayModeSelect" class="text-input">
+                    <option value="outline">Build an outline</option>
+                    <option value="thesis">Strengthen thesis</option>
+                    <option value="draft">Draft a section</option>
+                    <option value="revise">Revise what I wrote</option>
+                  </select>
+                </div>
+              </div>
+              <label class="field-label" for="essayAssignmentSelect">Canvas assignment</label>
+              <select id="essayAssignmentSelect" class="text-input"></select>
+              <div class="helper-copy">Essay help uses the selected Canvas assignment and rubric automatically. Add optional context below only if something important is missing from Canvas.</div>
+              <label class="field-label" for="essayExtraInput">Optional extra context</label>
+              <textarea id="essayExtraInput" class="text-area" rows="4" placeholder="Optional: professor comments, special instructions from class, source ideas, or anything not shown in Canvas."></textarea>
+              <label class="field-label" for="essayDraftInput">Your answers, thesis, notes, or draft</label>
+              <textarea id="essayDraftInput" class="text-area" rows="8" placeholder="First click asks targeted questions. Then answer them here and click again to build the draft help."></textarea>
+              <button id="essayBtn" class="primary-btn">Start Essay Coaching</button>
+              <div id="essayOutput" class="result-area"></div>
+            </section>
+
+            <section class="studio-view" id="tab-scorer">
+              <div class="tool-grid">
+                <div>
+                  <label class="field-label" for="scorerCourseSelect">Course</label>
+                  <select id="scorerCourseSelect" class="text-input"></select>
+                </div>
+                <div>
+                  <label class="field-label" for="scorerAssignmentSelect">Assignment or rubric source</label>
+                  <select id="scorerAssignmentSelect" class="text-input"></select>
+                </div>
+              </div>
+              <label class="field-label" for="scorerDraftInput">Paste your draft</label>
+              <textarea id="scorerDraftInput" class="text-area" rows="10" placeholder="Paste the essay draft you want scored before submitting."></textarea>
+              <button id="scorerBtn" class="primary-btn">Score Draft</button>
+              <div id="scorerOutput" class="result-area"></div>
+            </section>
+          </section>
+        </section>
+      </main>
+    </section>
+  </div>
+
+  <script src="/runtime-config.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
+
+
+

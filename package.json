@@ -1,0 +1,9 @@
+{
+  "name": "canvas-assistant-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private proxy for Canvas AI Assistant",
+  "scripts": {
+    "start": "node proxy-server.js"
+  }
+}

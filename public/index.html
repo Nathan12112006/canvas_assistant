@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canvas Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/home.css">
+</head>
+<body>
+  <div class="home-page">
+    <div class="home-glow home-glow-a"></div>
+    <div class="home-glow home-glow-b"></div>
+
+    <header class="home-nav">
+      <a href="/" class="home-brand">
+        <span class="home-brand-kicker">Canvas Assistant</span>
+        <span class="home-brand-sub">Course-aware academic workspace</span>
+      </a>
+
+      <nav class="home-links" aria-label="Homepage sections">
+        <a href="#how-it-works">How It Works</a>
+        <a href="#features">Features</a>
+        <a href="#why-it-works">Why It Helps</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <div class="home-auth-actions">
+        <a href="/auth.html#login" class="home-btn home-btn-ghost">Login</a>
+        <a href="/auth.html#signup" class="home-btn home-btn-primary">Sign Up</a>
+      </div>
+    </header>
+
+    <main class="home-main">
+      <section class="home-hero">
+        <div class="home-hero-copy">
+          <div class="home-eyebrow">Built For Students Using Canvas</div>
+          <h1>Your Canvas courses, actually organized.</h1>
+          <p class="home-lead">See what is due, what is missing, and what matters next without digging through every course. Canvas Assistant turns your real classes into one readable dashboard with grounded AI help.</p>
+
+          <div class="home-hero-actions">
+            <a href="/auth.html#signup" class="home-btn home-btn-primary">Create Your Account</a>
+            <a href="/auth.html#login" class="home-btn home-btn-secondary">Open Login</a>
+          </div>
+
+          <div class="home-trust-row">
+            <div class="home-trust-pill">Deadlines across every class</div>
+            <div class="home-trust-pill">AI grounded in your real coursework</div>
+            <div class="home-trust-pill">One setup, then fast login</div>
+          </div>
+        </div>
+
+        <div class="home-hero-panel">
+          <div class="hero-panel-card hero-panel-primary">
+            <div class="hero-panel-label">What you get immediately</div>
+            <div class="hero-panel-list">
+              <div class="hero-panel-item">
+                <strong>One honest workload view</strong>
+                <span>See overdue, upcoming, and recently submitted work in one place instead of bouncing between classes.</span>
+              </div>
+              <div class="hero-panel-item">
+                <strong>Course-specific help</strong>
+                <span>Chat, notes, and writing tools use your actual assignments, announcements, and rubric signals.</span>
+              </div>
+              <div class="hero-panel-item">
+                <strong>Setup that sticks</strong>
+                <span>Connect Canvas once, then come back with just your username and password.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-panel-card hero-panel-stats">
+            <div class="hero-stat">
+              <strong>Deadlines</strong>
+              <span>Monthly view, urgency cues, cleaner triage</span>
+            </div>
+            <div class="hero-stat">
+              <strong>Study Tools</strong>
+              <span>Chat, notes, homework, essay help, draft scoring</span>
+            </div>
+            <div class="hero-stat">
+              <strong>Account Flow</strong>
+              <span>Update Canvas settings later without rebuilding your account</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-it-works" class="home-section">
+        <div class="home-section-head">
+          <div class="home-eyebrow">How It Works</div>
+          <h2>A simpler path from signup to daily use.</h2>
+          <p>Instead of re-entering Canvas details every session, the setup happens once and stays attached to the account.</p>
+        </div>
+
+        <div class="home-step-grid">
+          <article class="home-step-card">
+            <div class="home-step-num">01</div>
+            <h3>Create an account</h3>
+            <p>Choose a username and password on the auth page, then enter your Canvas domain and access token during signup.</p>
+          </article>
+          <article class="home-step-card">
+            <div class="home-step-num">02</div>
+            <h3>Open your dashboard</h3>
+            <p>After login, Canvas Assistant builds a workspace around your real course announcements, assignments, due dates, and submission state.</p>
+          </article>
+          <article class="home-step-card">
+            <div class="home-step-num">03</div>
+            <h3>Update details only when needed</h3>
+            <p>If your Canvas token expires or your connection changes, edit the saved Canvas settings from inside the dashboard instead of making a new account.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="features" class="home-section">
+        <div class="home-section-head">
+          <div class="home-eyebrow">Features</div>
+          <h2>More than just a login screen.</h2>
+          <p>The front page now explains the product clearly before sending users to account access.</p>
+        </div>
+
+        <div class="home-feature-grid-v2">
+          <article class="home-feature-card">
+            <h3>Calendar and assignment tracking</h3>
+            <p>Get a clearer view of what is due this month, what is missing, and what needs attention first across your visible courses.</p>
+          </article>
+          <article class="home-feature-card">
+            <h3>Course-aware AI chat</h3>
+            <p>Ask what to work on next, explain a concept using a course context, or use announcements and assignments as grounding for better answers.</p>
+          </article>
+          <article class="home-feature-card">
+            <h3>Study notes and homework help</h3>
+            <p>Generate review notes or get assignment help tied to what your instructors are actually assigning.</p>
+          </article>
+          <article class="home-feature-card">
+            <h3>Essay coaching and draft scoring</h3>
+            <p>Use assignment descriptions and rubric signals to plan essays, improve drafts, and get a pre-submission review.</p>
+          </article>
+          <article class="home-feature-card">
+            <h3>Saved account workflow</h3>
+            <p>Login is based on username and password, while Canvas details remain saved with the account for future sessions.</p>
+          </article>
+          <article class="home-feature-card">
+            <h3>Editable Canvas connection</h3>
+            <p>You can update the stored Canvas domain or token later, which helps when credentials expire and avoids account duplication.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="why-it-works" class="home-section home-section-band">
+        <div class="home-section-head narrow">
+          <div class="home-eyebrow">Why It Helps</div>
+          <h2>Designed to reduce friction, not add another setup burden.</h2>
+        </div>
+
+        <div class="home-band-grid">
+          <div class="home-band-copy">
+            <p>Many student tools fail because they ask for the same setup details over and over. This flow separates the public-facing homepage from the account page, keeps navigation straightforward, and makes the actual product value easier to understand at a glance.</p>
+            <p>Once signed in, students get a dashboard that can be revisited quickly. The account settings panel inside the dashboard handles Canvas token changes later, so expired credentials do not force a brand new account.</p>
+          </div>
+          <div class="home-band-points">
+            <div class="home-band-point">Clear homepage with direct navigation</div>
+            <div class="home-band-point">Separate auth page for login and signup</div>
+            <div class="home-band-point">Saved Canvas setup tied to the user account</div>
+            <div class="home-band-point">Editable Canvas settings after login</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="home-section">
+        <div class="home-section-head">
+          <div class="home-eyebrow">FAQ</div>
+          <h2>Questions users are likely to have immediately.</h2>
+        </div>
+
+        <div class="home-faq-grid">
+          <article class="home-faq-card">
+            <h3>Do I need to paste my Canvas token every login?</h3>
+            <p>No. The token is collected when the account is created and reused when the user logs in with username and password later.</p>
+          </article>
+          <article class="home-faq-card">
+            <h3>What if the Canvas token expires?</h3>
+            <p>The dashboard includes account settings where the saved Canvas domain and token can be updated without making a new account.</p>
+          </article>
+          <article class="home-faq-card">
+            <h3>What does the app actually use from Canvas?</h3>
+            <p>It builds the dashboard from course data such as assignments, announcements, due dates, and submission state so the assistant can stay relevant to the student’s real coursework.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+
