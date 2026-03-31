@@ -1,59 +1,42 @@
-# Canvas Assistant Dashboard
+# Canvas Assistant
 
-Canvas Assistant is a Canvas-connected student dashboard with a static frontend, a small Node backend, and AI-assisted study tools grounded in live course data.
+Canvas Assistant is a student website built around live Canvas coursework. It brings your classes, assignments, due dates, and AI study tools into one place so you can see what matters first without digging through each course manually.
 
-## Stack
+The site is designed to help students:
+- track upcoming and overdue assignments
+- view coursework in a calendar and priority queue
+- use AI chat grounded in real class context
+- generate study notes and homework help
+- get essay support and draft scoring based on assignment details
 
-- Frontend: static HTML, CSS, and vanilla JavaScript in `public/`
-- Backend: Node HTTP server in `proxy-server.js`
-- AI proxy: OpenAI API through `POST /api/chat`
-- Canvas sync: Canvas API through `POST /api/canvas/context`
+## Live website
 
-## Local setup
+Sign up here:
 
-1. Copy `.env.example` to `.env`.
-2. Set your real OpenAI key in `.env`.
-3. Start the app:
+[https://canvas-assistant-api.onrender.com](https://canvas-assistant-api.onrender.com)
 
-```powershell
-npm start
-```
+## What the website does
 
-4. Open [http://localhost:8787](http://localhost:8787).
+Canvas Assistant connects to your Canvas account using your Canvas domain and access token. Once connected, it builds a dashboard around your real course data so the experience stays relevant to your actual workload.
 
-## Environment variables
+Main features:
+- account signup and login
+- Canvas-connected dashboard
+- assignment calendar and urgency tracking
+- priority queue for important work
+- course-aware AI chat
+- study notes generation
+- homework help
+- essay coaching
+- draft scoring
 
-Use `.env.example` as the template:
+## How it works
 
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-4.1-mini
-ALLOWED_ORIGINS=http://localhost:8787
-```
-
-## Project structure
-
-- `public/index.html`: homepage
-- `public/auth.html`: auth page and dashboard shell
-- `public/app.js`: frontend dashboard logic
-- `public/styles.css`: shared dashboard styling
-- `public/home.css`: homepage styling
-- `public/auth.css`: auth page styling
-- `proxy-server.js`: backend server and API proxy
-- `DEPLOYMENT.md`: Vercel and Render deployment guide
-- `render.yaml`: Render service configuration
-- `vercel.json`: Vercel frontend configuration
-
-## Main routes
-
-- `GET /`
-- `GET /health`
-- `POST /api/canvas/context`
-- `POST /api/chat`
+After signing up, the website checks your Canvas connection, saves your account details, and loads your dashboard. From there, you can review assignments, filter visible courses, and use the built-in AI tools without leaving the site.
 
 ## Notes
 
-- Node 18+ is required because the server uses built-in `fetch`.
-- Keep `.env` private and do not commit it.
+- Node 18+ is required for local development.
+- `.env` should stay private and should not be committed.
 - Canvas access tokens are stored in browser `localStorage` for convenience.
-- Review [DEPLOYMENT.md](DEPLOYMENT.md) before deploying.
+- Deployment details are in [DEPLOYMENT.md](DEPLOYMENT.md).
