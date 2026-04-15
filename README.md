@@ -11,8 +11,6 @@ The site is designed to help students:
 
 ## Live website
 
-Sign up here:
-
 [https://canvas-assistant-api.onrender.com](https://canvas-assistant-api.onrender.com)
 
 ## What the website does

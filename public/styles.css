@@ -163,6 +163,14 @@ a { color: inherit; }
   backdrop-filter: blur(12px);
 }
 
+.calendar-month-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .story-card {
   border-radius: 22px;
   padding: 16px 18px;
@@ -431,6 +439,45 @@ a { color: inherit; }
   margin-top: 16px;
 }
 
+.calendar-tools {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.calendar-nav-btn {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.46);
+  color: var(--ink);
+  padding: 10px 14px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition: transform 140ms ease, background 140ms ease;
+}
+
+.calendar-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.72);
+  transform: translateY(-1px);
+}
+
+.calendar-tool-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.8fr);
+  gap: 12px;
+}
+
+.calendar-tool-grid-secondary {
+  grid-template-columns: minmax(0, 1.4fr) auto;
+}
+
+.calendar-tool-actions {
+  display: flex;
+  align-items: end;
+}
+
 .calendar-weekday {
   text-align: center;
   text-transform: uppercase;
@@ -490,6 +537,20 @@ a { color: inherit; }
 .status-chip.soon { color: #9b6a08; background: rgba(183, 120, 25, 0.12); }
 .assignment-pill.ok,
 .status-chip.ok { color: var(--ok); background: rgba(35, 104, 75, 0.12); }
+.assignment-pill.event,
+.status-chip.event { color: #1f4d7a; background: rgba(45, 116, 182, 0.12); }
+.assignment-pill.complete,
+.status-chip.complete { color: #4d5c56; background: rgba(93, 106, 99, 0.14); }
+
+.assignment-pill.is-complete,
+.assignment-card.is-complete {
+  opacity: 0.78;
+}
+
+.assignment-card.is-complete .assignment-name,
+.assignment-pill.is-complete .assignment-pill-name {
+  text-decoration: line-through;
+}
 
 .assignment-card { display: grid; gap: 8px; }
 .assignment-course,
@@ -502,12 +563,33 @@ a { color: inherit; }
 }
 
 .assignment-meta,
+.assignment-actions,
 .assignment-links,
 .panel-header,
 .topbar-actions {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+}
+
+.assignment-actions {
+  gap: 10px;
+}
+
+.assignment-toggle-btn {
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+
+.assignment-card-event {
+  border-left: 5px solid #2d74b6;
+  background: rgba(241, 248, 255, 0.88);
+}
+
+.danger-soft {
+  color: var(--danger);
 }
 
 .calendar-month-label,
@@ -609,9 +691,12 @@ a { color: inherit; }
   .chat-input-row,
   .setup-topbar { flex-direction: column; }
   .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .calendar-tool-grid,
+  .calendar-tool-grid-secondary,
   .tool-grid,
   .stats-grid { grid-template-columns: 1fr; }
   .chat-bubble { max-width: 100%; }
+  .calendar-tool-actions { align-items: stretch; }
 }
 
 .home-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }

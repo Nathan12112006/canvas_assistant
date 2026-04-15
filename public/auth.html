@@ -178,9 +178,34 @@
             <div class="panel-header">
               <div>
                 <div class="card-heading">Calendar</div>
-                <p class="section-copy">Assignments due this month, organized by date.</p>
+                <p class="section-copy">Assignments and personal events, organized by date.</p>
               </div>
-              <div id="calendarMonthLabel" class="calendar-month-label"></div>
+              <div class="calendar-month-nav">
+                <button id="calendarPrevMonthBtn" class="calendar-nav-btn" type="button" aria-label="Previous month">Prev</button>
+                <div id="calendarMonthLabel" class="calendar-month-label"></div>
+                <button id="calendarNextMonthBtn" class="calendar-nav-btn" type="button" aria-label="Next month">Next</button>
+              </div>
+            </div>
+            <div class="calendar-tools">
+              <div class="calendar-tool-grid">
+                <div>
+                  <label class="field-label" for="calendarEventTitle">Event title</label>
+                  <input id="calendarEventTitle" class="text-input" type="text" placeholder="Study group, exam, meeting">
+                </div>
+                <div>
+                  <label class="field-label" for="calendarEventDateTime">Date and time</label>
+                  <input id="calendarEventDateTime" class="text-input" type="datetime-local">
+                </div>
+              </div>
+              <div class="calendar-tool-grid calendar-tool-grid-secondary">
+                <div>
+                  <label class="field-label" for="calendarEventNotes">Notes</label>
+                  <input id="calendarEventNotes" class="text-input" type="text" placeholder="Optional details">
+                </div>
+                <div class="calendar-tool-actions">
+                  <button id="addCalendarEventBtn" class="primary-btn" type="button">Add Event</button>
+                </div>
+              </div>
             </div>
             <div id="calendarGrid" class="calendar-grid"></div>
             <div id="calendarAgenda" class="calendar-agenda"></div>
