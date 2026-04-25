@@ -21,6 +21,7 @@ const DATA_DIR = ACCOUNT_STORAGE_FILE
   ? path.dirname(ACCOUNT_STORAGE_FILE)
   : (CONFIGURED_DATA_DIR || DEFAULT_DATA_DIR);
 const ACCOUNTS_FILE = ACCOUNT_STORAGE_FILE || path.join(DATA_DIR, "accounts.json");
+const LEGACY_ACCOUNTS_FILE = path.join(DEFAULT_DATA_DIR, "accounts.json");
 
 if (!OPENAI_API_KEY) {
   console.error("Missing OPENAI_API_KEY.");
@@ -80,6 +81,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Canvas assistant web app listening on http://localhost:${PORT}`);
+  console.log(`Account storage file: ${ACCOUNTS_FILE}`);
 });
 
 async function handleChat(req, res) {
@@ -535,8 +537,30 @@ function ensureDataFiles() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
+  migrateLegacyAccountsFile();
   if (!fs.existsSync(ACCOUNTS_FILE)) {
     fs.writeFileSync(ACCOUNTS_FILE, "{}\n", "utf8");
+  }
+}
+
+function migrateLegacyAccountsFile() {
+  if (path.resolve(LEGACY_ACCOUNTS_FILE) === path.resolve(ACCOUNTS_FILE)) {
+    return;
+  }
+
+  if (!fs.existsSync(LEGACY_ACCOUNTS_FILE) || fs.existsSync(ACCOUNTS_FILE)) {
+    return;
+  }
+
+  try {
+    const raw = fs.readFileSync(LEGACY_ACCOUNTS_FILE, "utf8");
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return;
+    }
+    fs.writeFileSync(ACCOUNTS_FILE, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  } catch (error) {
+    console.warn("Unable to migrate legacy account storage:", error.message);
   }
 }
 
