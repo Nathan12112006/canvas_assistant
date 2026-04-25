@@ -120,100 +120,98 @@
         </div>
       </header>
 
-      <main class="dashboard-grid">
-        <aside class="sidebar">
-          <section class="panel profile-panel">
-            <div class="card-heading">Student</div>
-            <div class="profile-row">
-              <div id="profileAvatar" class="profile-avatar">CA</div>
-              <div>
-                <div id="profileName" class="profile-name">Canvas Student</div>
-                <div id="profileMeta" class="profile-meta">Waiting for Canvas data</div>
+      <div class="dashboard-top-tabs">
+        <button class="dashboard-tab active" data-dashboard-tab="planner" type="button">Planner</button>
+        <button class="dashboard-tab" data-dashboard-tab="ai" type="button">AI Studio</button>
+        <button class="dashboard-tab" data-dashboard-tab="settings" type="button">Settings</button>
+      </div>
+
+      <section class="dashboard-view active" id="dashboardView-planner">
+        <main class="dashboard-grid">
+          <aside class="sidebar">
+            <section class="panel profile-panel">
+              <div class="card-heading">Student</div>
+              <div class="profile-row">
+                <div id="profileAvatar" class="profile-avatar">CA</div>
+                <div>
+                  <div id="profileName" class="profile-name">Canvas Student</div>
+                  <div id="profileMeta" class="profile-meta">Waiting for Canvas data</div>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="panel profile-panel">
-            <div class="card-heading">Account Settings</div>
-            <p class="section-copy">Update your saved Canvas domain or token here if they change or expire.</p>
-            <label class="field-label" for="settingsDomainInput">Canvas domain</label>
-            <input id="settingsDomainInput" class="text-input" type="text" placeholder="yourschool.instructure.com" autocomplete="off">
-            <label class="field-label" for="settingsTokenInput">Canvas access token</label>
-            <input id="settingsTokenInput" class="text-input" type="password" placeholder="Update your Canvas token" autocomplete="off">
-            <div class="button-row">
-              <button id="saveAccountSettingsBtn" class="primary-btn">Save Canvas Settings</button>
-            </div>
-            <div id="accountStatus" class="helper-copy">Saved changes update this account and keep future logins connected.</div>
-          </section>
+            <section class="panel metrics-panel">
+              <div class="card-heading">Overview</div>
+              <div id="overviewStats" class="stats-grid"></div>
+            </section>
 
-          <section class="panel metrics-panel">
-            <div class="card-heading">Overview</div>
-            <div id="overviewStats" class="stats-grid"></div>
-          </section>
+            <section class="panel agenda-panel">
+              <div class="card-heading">Priority Queue</div>
+              <p class="section-copy">Mark Canvas work done, and keep your own tasks in the same flow.</p>
+              <div id="priorityList" class="mini-list"></div>
+            </section>
+          </aside>
 
-          <section class="panel filter-panel">
-            <div class="card-heading">Visible Courses</div>
-            <p class="section-copy">Hide classes you do not want included in the calendar and AI tools.</p>
-            <div id="courseFilterList" class="filter-list">
-              <div class="empty-state tight">Load Canvas to manage course visibility.</div>
-            </div>
-          </section>
+          <section class="workspace">
+            <section class="panel hero-panel">
+              <div>
+                <div class="card-heading">This Week At A Glance</div>
+                <p class="section-copy">See what needs attention first, then organize your month from one calendar.</p>
+              </div>
+              <div id="syncStamp" class="sync-stamp">Not synced yet</div>
+            </section>
 
-          <section class="panel agenda-panel">
-            <div class="card-heading">Priority Queue</div>
-            <p class="section-copy">Mark Canvas work done, and keep your own tasks in the same flow.</p>
-            <div id="priorityList" class="mini-list"></div>
+            <section class="panel calendar-panel">
+              <div class="panel-header">
+                <div>
+                  <div class="card-heading">Calendar</div>
+                  <p class="section-copy">Assignments and personal tasks, organized by date and completion status.</p>
+                </div>
+                <div class="calendar-month-nav">
+                  <button id="calendarPrevMonthBtn" class="calendar-nav-btn" type="button" aria-label="Previous month">Prev</button>
+                  <select id="calendarMonthSelect" class="text-input calendar-month-select" aria-label="Choose month"></select>
+                  <div id="calendarMonthLabel" class="calendar-month-label"></div>
+                  <button id="calendarNextMonthBtn" class="calendar-nav-btn" type="button" aria-label="Next month">Next</button>
+                </div>
+              </div>
+              <div class="calendar-tools">
+                <div class="calendar-tool-grid">
+                  <div>
+                    <label class="field-label" for="calendarEventTitle">Task title</label>
+                    <input id="calendarEventTitle" class="text-input" type="text" placeholder="Study group, draft intro, finish worksheet">
+                  </div>
+                  <div>
+                    <label class="field-label" for="calendarEventDateTime">Due date and time</label>
+                    <input id="calendarEventDateTime" class="text-input" type="datetime-local">
+                  </div>
+                </div>
+                <div class="calendar-tool-grid calendar-tool-grid-secondary">
+                  <div>
+                    <label class="field-label" for="calendarEventNotes">Notes</label>
+                    <input id="calendarEventNotes" class="text-input" type="text" placeholder="Optional details">
+                  </div>
+                  <div class="calendar-tool-actions">
+                    <button id="addCalendarEventBtn" class="primary-btn" type="button">Add Task</button>
+                  </div>
+                </div>
+              </div>
+              <div id="calendarGrid" class="calendar-grid"></div>
+              <div id="calendarAgenda" class="calendar-agenda"></div>
+            </section>
           </section>
-        </aside>
+        </main>
+      </section>
 
-        <section class="workspace">
-          <section class="panel hero-panel">
+      <section class="dashboard-view" id="dashboardView-ai">
+        <section class="panel dashboard-ai-panel">
+          <div class="panel-header">
             <div>
-              <div class="card-heading">This Week At A Glance</div>
-              <p class="section-copy">See what needs attention first, then use the tools below without losing course context.</p>
+              <div class="card-heading">AI Workspace</div>
+              <p class="section-copy">Chat, notes, homework, essays, and draft review live here in one dedicated tab.</p>
             </div>
-            <div id="syncStamp" class="sync-stamp">Not synced yet</div>
-          </section>
+          </div>
 
-          <section class="panel calendar-panel">
-            <div class="panel-header">
-              <div>
-                <div class="card-heading">Calendar</div>
-                <p class="section-copy">Assignments and personal tasks, organized by date and completion status.</p>
-              </div>
-              <div class="calendar-month-nav">
-                <button id="calendarPrevMonthBtn" class="calendar-nav-btn" type="button" aria-label="Previous month">Prev</button>
-                <select id="calendarMonthSelect" class="text-input calendar-month-select" aria-label="Choose month"></select>
-                <div id="calendarMonthLabel" class="calendar-month-label"></div>
-                <button id="calendarNextMonthBtn" class="calendar-nav-btn" type="button" aria-label="Next month">Next</button>
-              </div>
-            </div>
-            <div class="calendar-tools">
-              <div class="calendar-tool-grid">
-                <div>
-                  <label class="field-label" for="calendarEventTitle">Task title</label>
-                  <input id="calendarEventTitle" class="text-input" type="text" placeholder="Study group, draft intro, finish worksheet">
-                </div>
-                <div>
-                  <label class="field-label" for="calendarEventDateTime">Due date and time</label>
-                  <input id="calendarEventDateTime" class="text-input" type="datetime-local">
-                </div>
-              </div>
-              <div class="calendar-tool-grid calendar-tool-grid-secondary">
-                <div>
-                  <label class="field-label" for="calendarEventNotes">Notes</label>
-                  <input id="calendarEventNotes" class="text-input" type="text" placeholder="Optional details">
-                </div>
-                <div class="calendar-tool-actions">
-                  <button id="addCalendarEventBtn" class="primary-btn" type="button">Add Task</button>
-                </div>
-              </div>
-            </div>
-            <div id="calendarGrid" class="calendar-grid"></div>
-            <div id="calendarAgenda" class="calendar-agenda"></div>
-          </section>
-
-          <section class="panel studio-panel">
+          <section class="panel studio-panel studio-panel-inner">
             <div class="studio-tabs">
               <button class="studio-tab active" data-tab="chat">AI Chat</button>
               <button class="studio-tab" data-tab="notes">Study Notes</button>
@@ -320,7 +318,45 @@
             </section>
           </section>
         </section>
-      </main>
+      </section>
+
+      <section class="dashboard-view" id="dashboardView-settings">
+        <main class="settings-grid">
+          <section class="panel settings-panel">
+            <div class="card-heading">Account Profile</div>
+            <p class="section-copy">Edit the username and password used to log in to this dashboard.</p>
+            <label class="field-label" for="settingsUsernameInput">Username</label>
+            <input id="settingsUsernameInput" class="text-input" type="text" placeholder="Username" autocomplete="username">
+            <label class="field-label" for="settingsPasswordInput">New password</label>
+            <input id="settingsPasswordInput" class="text-input" type="password" placeholder="Leave blank to keep current password" autocomplete="new-password">
+            <div class="button-row">
+              <button id="saveProfileSettingsBtn" class="primary-btn" type="button">Save Login Settings</button>
+            </div>
+            <div id="profileSettingsStatus" class="helper-copy">Update your login details here. Existing dashboard data will follow your account if the username changes.</div>
+          </section>
+
+          <section class="panel settings-panel">
+            <div class="card-heading">Canvas Connection</div>
+            <p class="section-copy">Update your saved Canvas domain or token here if they change or expire.</p>
+            <label class="field-label" for="settingsDomainInput">Canvas domain</label>
+            <input id="settingsDomainInput" class="text-input" type="text" placeholder="yourschool.instructure.com" autocomplete="off">
+            <label class="field-label" for="settingsTokenInput">Canvas access token</label>
+            <input id="settingsTokenInput" class="text-input" type="password" placeholder="Update your Canvas token" autocomplete="off">
+            <div class="button-row">
+              <button id="saveAccountSettingsBtn" class="primary-btn" type="button">Save Canvas Settings</button>
+            </div>
+            <div id="accountStatus" class="helper-copy">Saved changes update this account and keep future logins connected.</div>
+          </section>
+
+          <section class="panel settings-panel settings-panel-wide">
+            <div class="card-heading">Visible Courses</div>
+            <p class="section-copy">Hide classes you do not want included in the calendar and AI tools.</p>
+            <div id="courseFilterList" class="filter-list">
+              <div class="empty-state tight">Load Canvas to manage course visibility.</div>
+            </div>
+          </section>
+        </main>
+      </section>
     </section>
   </div>
 

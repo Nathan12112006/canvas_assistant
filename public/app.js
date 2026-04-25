@@ -4,6 +4,13 @@ const STORAGE_KEYS = {
   currentUser: "canvasDashboardCurrentUser"
 };
 
+const USER_SCOPED_SUFFIXES = [
+  "hiddenCourses",
+  "completedAssignments",
+  "customEvents",
+  "chatHistory"
+];
+
 const state = {
   context: null,
   currentUser: "",
@@ -13,7 +20,8 @@ const state = {
   customEvents: [],
   chatHistory: [],
   essayCoach: null,
-  calendarMonthCursor: null
+  calendarMonthCursor: null,
+  dashboardTab: "planner"
 };
 
 const elements = {
@@ -36,10 +44,16 @@ const elements = {
   signupBtn: qs("#signupBtn"),
   refreshBtn: qs("#refreshBtn"),
   logoutBtn: qs("#logoutBtn"),
+  dashboardTabs: qsa(".dashboard-tab[data-dashboard-tab]"),
+  dashboardViews: qsa(".dashboard-view"),
   saveAccountSettingsBtn: qs("#saveAccountSettingsBtn"),
+  saveProfileSettingsBtn: qs("#saveProfileSettingsBtn"),
+  settingsUsernameInput: qs("#settingsUsernameInput"),
+  settingsPasswordInput: qs("#settingsPasswordInput"),
   settingsDomainInput: qs("#settingsDomainInput"),
   settingsTokenInput: qs("#settingsTokenInput"),
   accountStatus: qs("#accountStatus"),
+  profileSettingsStatus: qs("#profileSettingsStatus"),
   welcomeTitle: qs("#welcomeTitle"),
   welcomeCopy: qs("#welcomeCopy"),
   profileAvatar: qs("#profileAvatar"),
@@ -103,7 +117,9 @@ function bindEvents() {
   elements.signupBtn?.addEventListener("click", handleSignup);
   elements.refreshBtn?.addEventListener("click", () => loadDashboard(false));
   elements.logoutBtn?.addEventListener("click", logout);
+  elements.dashboardTabs.forEach(tab => tab.addEventListener("click", () => setDashboardTab(tab.dataset.dashboardTab)));
   elements.saveAccountSettingsBtn?.addEventListener("click", saveAccountSettings);
+  elements.saveProfileSettingsBtn?.addEventListener("click", saveProfileSettings);
   elements.chatSendBtn?.addEventListener("click", sendChat);
   elements.notesBtn?.addEventListener("click", generateNotes);
   elements.homeworkBtn?.addEventListener("click", generateHomeworkHelp);
@@ -171,6 +187,7 @@ function showSetup() {
 function showDashboard() {
   elements.setupScreen.classList.add("hidden");
   elements.dashboardScreen.classList.remove("hidden");
+  setDashboardTab(state.dashboardTab || "planner");
 }
 
 async function handleLogin() {
@@ -256,6 +273,9 @@ function applyAccountSession(username, account) {
   state.customEvents = normalizeCustomItems(readJson(userScopedKey("customEvents"), []));
   state.chatHistory = readJson(userScopedKey("chatHistory"), []);
   state.essayCoach = null;
+  state.dashboardTab = "planner";
+  elements.settingsUsernameInput.value = username;
+  elements.settingsPasswordInput.value = "";
   elements.settingsDomainInput.value = state.settings.canvasDomain;
   elements.settingsTokenInput.value = state.settings.canvasToken;
 }
@@ -296,9 +316,74 @@ async function saveAccountSettings() {
   await loadDashboard(false);
 }
 
+async function saveProfileSettings() {
+  const currentUsername = state.currentUser;
+  const accounts = getAccounts();
+  const account = accounts[currentUsername];
+  const nextUsername = normalizeUsername(elements.settingsUsernameInput.value);
+  const nextPassword = elements.settingsPasswordInput.value.trim();
+
+  if (!currentUsername || !account) {
+    setProfileSettingsStatus("No active account is logged in.", true);
+    return;
+  }
+
+  if (!nextUsername) {
+    setProfileSettingsStatus("Username is required.", true);
+    return;
+  }
+
+  if (nextUsername !== currentUsername && accounts[nextUsername]) {
+    setProfileSettingsStatus("That username already exists.", true);
+    return;
+  }
+
+  if (nextPassword && nextPassword.length < 6) {
+    setProfileSettingsStatus("Choose a password with at least 6 characters.", true);
+    return;
+  }
+
+  const nextAccount = {
+    ...account,
+    username: nextUsername,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (nextPassword) {
+    const salt = createSalt();
+    nextAccount.passwordSalt = salt;
+    nextAccount.passwordHash = await hashPassword(nextPassword, salt);
+  }
+
+  delete accounts[currentUsername];
+  accounts[nextUsername] = nextAccount;
+  localStorage.setItem(STORAGE_KEYS.accounts, JSON.stringify(accounts));
+
+  if (nextUsername !== currentUsername) {
+    migrateUserScopedStorage(currentUsername, nextUsername);
+  }
+
+  localStorage.setItem(STORAGE_KEYS.currentUser, nextUsername);
+  applyAccountSession(nextUsername, nextAccount);
+  state.dashboardTab = "settings";
+  renderDashboard();
+
+  setProfileSettingsStatus(
+    nextPassword
+      ? "Saved your username and password."
+      : "Saved your username.",
+    false
+  );
+}
+
 function setAccountStatus(message, isError) {
   elements.accountStatus.textContent = message;
   elements.accountStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
+}
+
+function setProfileSettingsStatus(message, isError) {
+  elements.profileSettingsStatus.textContent = message;
+  elements.profileSettingsStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
 }
 
 async function validateCanvasCredentials(canvasDomain, canvasToken) {
@@ -364,9 +449,13 @@ function renderDashboard() {
   renderEssayAssignments();
   resetEssayCoach();
   renderChatHistory();
+  elements.settingsUsernameInput.value = state.currentUser || "";
+  elements.settingsPasswordInput.value = "";
   elements.settingsDomainInput.value = state.settings.canvasDomain || "";
   elements.settingsTokenInput.value = state.settings.canvasToken || "";
+  setProfileSettingsStatus("Update your login details here. Existing dashboard data will follow your account if the username changes.", false);
   setAccountStatus("Saved changes update this account and keep future logins connected.", false);
+  setDashboardTab(state.dashboardTab || "planner");
 }
 
 function renderHeader() {
@@ -878,7 +967,9 @@ function logout() {
   state.chatHistory = [];
   state.essayCoach = null;
   state.calendarMonthCursor = null;
+  state.dashboardTab = "planner";
   elements.loginPasswordInput.value = "";
+  if (elements.settingsPasswordInput) elements.settingsPasswordInput.value = "";
   [elements.notesOutput, elements.homeworkOutput, elements.essayOutput, elements.scorerOutput].forEach(node => {
     if (node) node.innerHTML = "";
   });
@@ -891,6 +982,13 @@ function logout() {
 function setActiveTab(tabId) {
   elements.studioTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.tab === tabId));
   elements.studioViews.forEach(view => view.classList.toggle("active", view.id === `tab-${tabId}`));
+}
+
+function setDashboardTab(tabId) {
+  const nextTab = tabId || "planner";
+  state.dashboardTab = nextTab;
+  elements.dashboardTabs.forEach(tab => tab.classList.toggle("active", tab.dataset.dashboardTab === nextTab));
+  elements.dashboardViews.forEach(view => view.classList.toggle("active", view.id === `dashboardView-${nextTab}`));
 }
 
 function courseOptionsHtml(courses, emptyLabel) {
@@ -1329,6 +1427,23 @@ function getAccounts() {
 
 function userScopedKey(suffix) {
   return `canvasDashboard:${state.currentUser || "guest"}:${suffix}`;
+}
+
+function userScopedKeyFor(username, suffix) {
+  return `canvasDashboard:${username || "guest"}:${suffix}`;
+}
+
+function migrateUserScopedStorage(fromUsername, toUsername) {
+  if (!fromUsername || !toUsername || fromUsername === toUsername) return;
+  USER_SCOPED_SUFFIXES.forEach(suffix => {
+    const fromKey = userScopedKeyFor(fromUsername, suffix);
+    const toKey = userScopedKeyFor(toUsername, suffix);
+    const value = localStorage.getItem(fromKey);
+    if (value !== null) {
+      localStorage.setItem(toKey, value);
+      localStorage.removeItem(fromKey);
+    }
+  });
 }
 
 function normalizeUsername(value) {
