@@ -8,8 +8,11 @@ const USER_SCOPED_SUFFIXES = [
   "hiddenCourses",
   "completedAssignments",
   "customEvents",
-  "chatHistory"
+  "chatHistory",
+  "userMemory"
 ];
+
+const CHAT_MEMORY_LIMIT = 16;
 
 const state = {
   context: null,
@@ -19,6 +22,7 @@ const state = {
   completedAssignments: [],
   customEvents: [],
   chatHistory: [],
+  userMemory: createEmptyUserMemory(),
   essayCoach: null,
   calendarMonthCursor: null,
   dashboardTab: "planner"
@@ -272,6 +276,7 @@ function applyAccountSession(username, account) {
   state.completedAssignments = readJson(userScopedKey("completedAssignments"), []);
   state.customEvents = normalizeCustomItems(readJson(userScopedKey("customEvents"), []));
   state.chatHistory = readJson(userScopedKey("chatHistory"), []);
+  state.userMemory = normalizeUserMemory(readJson(userScopedKey("userMemory"), createEmptyUserMemory()));
   state.essayCoach = null;
   state.dashboardTab = "planner";
   elements.settingsUsernameInput.value = username;
@@ -646,10 +651,14 @@ async function sendChat() {
   appendChatMessage("user", input);
   state.chatHistory.push({ role: "user", content: input, courseId: focusCourse?.id || null });
   persistChatHistory();
+  rememberUserText(input, { source: "chat", courseId: focusCourse?.id || null });
 
   const thinkingNode = appendChatMessage("assistant", "Thinking...");
   try {
-    const response = await requestAi(systemPrompt("chat", focusCourse), state.chatHistory.slice(-10).map(entry => ({ role: entry.role, content: entry.content })));
+    const response = await requestAi(
+      systemPrompt("chat", focusCourse),
+      buildChatConversationMessages()
+    );
     thinkingNode.remove();
     appendChatMessage("assistant", response.reply, true);
     state.chatHistory.push({ role: "assistant", content: response.reply, courseId: focusCourse?.id || null });
@@ -695,6 +704,7 @@ async function generateHomeworkHelp() {
   }
 
   renderLoading(elements.homeworkOutput, "Building assignment help...");
+  rememberUserText([need, work].filter(Boolean).join("\n\n"), { source: "homework", courseId: course.id });
   const prompt = [
     `Course: ${course.name}`,
     `Assignment: ${assignment.name}`,
@@ -734,6 +744,7 @@ async function generateEssayHelp() {
 
   const coachKey = `${course.id}:${assignment.id}:${mode}:${extraContext}`;
   const professorMemory = buildProfessorMemory(course).join(" | ");
+  rememberUserText([extraContext, draftOrAnswers].filter(Boolean).join("\n\n"), { source: "essay", courseId: course.id });
 
   if (!state.essayCoach || state.essayCoach.key !== coachKey) {
     renderLoading(elements.essayOutput, "Preparing assignment-specific coaching questions...");
@@ -791,6 +802,7 @@ async function scoreDraft() {
   }
 
   renderLoading(elements.scorerOutput, "Scoring draft against rubric and professor signals...");
+  rememberUserText(draft, { source: "scorer", courseId: course.id });
   const prompt = [
     `Course: ${course.name}`,
     `Assignment: ${assignment.name}`,
@@ -826,7 +838,12 @@ function systemPrompt(mode, focusCourse) {
   const visible = focusCourse ? [focusCourse] : visibleCourses();
   const courseData = visible.map(course => formatCourseForPrompt(course)).join("\n\n");
   const modeInstruction = {
-    chat: "Answer direct questions about workload, deadlines, risk, and concepts. When the user asks to explain a concept, use the selected course's terminology, assignments, rubric cues, and announcements instead of giving a generic textbook answer.",
+    chat: [
+      "Treat the exchange as an ongoing conversation, not isolated questions.",
+      "Use recent conversation memory to keep continuity, remember the student's stated goals, and avoid making the student repeat themselves.",
+      "When the user refers to earlier plans, classes, or concerns, connect back to them explicitly.",
+      "When the user asks to explain a concept, use the selected course's terminology, assignments, rubric cues, and announcements instead of giving a generic textbook answer."
+    ].join(" "),
     notes: "Generate concise but thorough study notes grounded in the actual course data and keep professor patterns in mind.",
     homework: "Coach the student through unfinished assignments. Be explicit with steps and reasoning.",
     essay_questions: "Ask assignment-specific coaching questions that help the student think before writing. Do not generate the essay yet.",
@@ -840,10 +857,12 @@ function systemPrompt(mode, focusCourse) {
     `Today is ${today}.`,
     focusLine,
     modeInstruction,
+    buildLongTermMemoryPromptBlock(mode),
+    mode === "chat" ? buildChatMemoryPromptBlock(focusCourse) : "",
     "If data is missing, say so plainly. Do not invent assignment requirements, rubric criteria, or source material.",
     "Visible course data:",
     courseData
-  ].join("\n\n");
+  ].filter(Boolean).join("\n\n");
 }
 
 function formatCourseForPrompt(course) {
@@ -965,6 +984,7 @@ function logout() {
   state.completedAssignments = [];
   state.customEvents = [];
   state.chatHistory = [];
+  state.userMemory = createEmptyUserMemory();
   state.essayCoach = null;
   state.calendarMonthCursor = null;
   state.dashboardTab = "planner";
@@ -1181,6 +1201,270 @@ function initials(value) {
 
 function persistChatHistory() {
   localStorage.setItem(userScopedKey("chatHistory"), JSON.stringify(state.chatHistory.slice(-20)));
+}
+
+function persistUserMemory() {
+  state.userMemory = normalizeUserMemory(state.userMemory);
+  localStorage.setItem(userScopedKey("userMemory"), JSON.stringify(state.userMemory));
+}
+
+function rememberUserText(text, meta = {}) {
+  const cleaned = String(text || "").trim();
+  if (!cleaned || cleaned.length < 8) return;
+
+  const memory = normalizeUserMemory(state.userMemory);
+  const styleTraits = inferWritingStyle(cleaned);
+  const goals = extractGoalSignals(cleaned);
+  const concerns = extractConcernSignals(cleaned);
+  const preferences = extractPreferenceSignals(cleaned);
+
+  memory.goals = mergeMemoryItems(memory.goals, goals);
+  memory.concerns = mergeMemoryItems(memory.concerns, concerns);
+  memory.preferences = mergeMemoryItems(memory.preferences, preferences);
+
+  memory.writing.samples = [
+    {
+      text: truncateText(cleaned, 280),
+      source: meta.source || "unknown",
+      courseId: meta.courseId || null,
+      capturedAt: new Date().toISOString()
+    },
+    ...(memory.writing.samples || [])
+  ].slice(0, 6);
+
+  memory.writing.metrics = mergeWritingMetrics(memory.writing.metrics, styleTraits.metrics);
+  memory.writing.voice = styleTraits.voice;
+  memory.writing.notes = styleTraits.notes;
+
+  state.userMemory = memory;
+  persistUserMemory();
+}
+
+function buildChatConversationMessages() {
+  return state.chatHistory
+    .slice(-CHAT_MEMORY_LIMIT)
+    .map(entry => ({
+      role: entry.role,
+      content: formatChatEntryForModel(entry)
+    }));
+}
+
+function buildChatMemoryPromptBlock(focusCourse) {
+  const memoryLines = buildChatMemoryLines(focusCourse);
+  if (!memoryLines.length) return "";
+  return [
+    "Recent conversation memory:",
+    memoryLines.map(line => `- ${line}`).join("\n")
+  ].join("\n");
+}
+
+function buildLongTermMemoryPromptBlock(mode) {
+  const memory = normalizeUserMemory(state.userMemory);
+  const lines = [];
+
+  if (memory.goals.length) {
+    lines.push(`Student goals: ${memory.goals.join(" | ")}`);
+  }
+  if (memory.concerns.length) {
+    lines.push(`Recurring concerns: ${memory.concerns.join(" | ")}`);
+  }
+  if (memory.preferences.length) {
+    lines.push(`Student preferences: ${memory.preferences.join(" | ")}`);
+  }
+
+  const writingSummary = buildWritingStyleSummary(memory.writing);
+  if (writingSummary) {
+    lines.push(`Writing style memory: ${writingSummary}`);
+    if (mode === "essay_build" || mode === "scorer" || mode === "homework" || mode === "chat") {
+      lines.push("When helping with writing, preserve the student's natural voice instead of overwriting it with a generic academic style.");
+    }
+  }
+
+  if (!lines.length) return "";
+  return [
+    "Long-term student memory:",
+    lines.map(line => `- ${line}`).join("\n")
+  ].join("\n");
+}
+
+function buildChatMemoryLines(focusCourse) {
+  const focusCourseId = String(focusCourse?.id || "");
+  return state.chatHistory
+    .slice(-8)
+    .filter(entry => !focusCourseId || !entry.courseId || String(entry.courseId) === focusCourseId)
+    .map(entry => {
+      const roleLabel = entry.role === "user" ? "Student" : "Assistant";
+      const courseLabel = entry.courseId ? courseNameById(entry.courseId) : "";
+      const prefix = courseLabel ? `${roleLabel} (${courseLabel})` : roleLabel;
+      return `${prefix}: ${truncateText(entry.content, 180)}`;
+    });
+}
+
+function formatChatEntryForModel(entry) {
+  const courseLabel = entry.courseId ? courseNameById(entry.courseId) : "";
+  if (!courseLabel) return entry.content;
+  const speaker = entry.role === "user" ? "Student" : "Assistant";
+  return `[${speaker} | Course: ${courseLabel}]\n${entry.content}`;
+}
+
+function courseNameById(courseId) {
+  return (state.context?.courses || []).find(course => String(course.id) === String(courseId))?.name || "Course";
+}
+
+function truncateText(value, limit) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit - 1)}...`;
+}
+
+function createEmptyUserMemory() {
+  return {
+    goals: [],
+    concerns: [],
+    preferences: [],
+    writing: {
+      voice: [],
+      notes: [],
+      samples: [],
+      metrics: {
+        sampleCount: 0,
+        avgSentenceLength: 0,
+        avgWordLength: 0,
+        firstPersonRatio: 0,
+        contractionRatio: 0
+      }
+    }
+  };
+}
+
+function normalizeUserMemory(value) {
+  const base = createEmptyUserMemory();
+  if (!value || typeof value !== "object" || Array.isArray(value)) return base;
+  return {
+    goals: Array.isArray(value.goals) ? value.goals.slice(0, 8).map(String) : [],
+    concerns: Array.isArray(value.concerns) ? value.concerns.slice(0, 8).map(String) : [],
+    preferences: Array.isArray(value.preferences) ? value.preferences.slice(0, 8).map(String) : [],
+    writing: {
+      voice: Array.isArray(value.writing?.voice) ? value.writing.voice.slice(0, 8).map(String) : [],
+      notes: Array.isArray(value.writing?.notes) ? value.writing.notes.slice(0, 8).map(String) : [],
+      samples: Array.isArray(value.writing?.samples) ? value.writing.samples.slice(0, 6) : [],
+      metrics: {
+        sampleCount: Number(value.writing?.metrics?.sampleCount) || 0,
+        avgSentenceLength: Number(value.writing?.metrics?.avgSentenceLength) || 0,
+        avgWordLength: Number(value.writing?.metrics?.avgWordLength) || 0,
+        firstPersonRatio: Number(value.writing?.metrics?.firstPersonRatio) || 0,
+        contractionRatio: Number(value.writing?.metrics?.contractionRatio) || 0
+      }
+    }
+  };
+}
+
+function mergeMemoryItems(existing, additions) {
+  return Array.from(new Set([...(existing || []), ...(additions || [])])).slice(0, 8);
+}
+
+function inferWritingStyle(text) {
+  const words = (text.match(/\b[\w']+\b/g) || []);
+  const sentences = text.split(/[.!?]+/).map(part => part.trim()).filter(Boolean);
+  const sampleWordCount = words.length || 1;
+  const avgSentenceLength = sampleWordCount / Math.max(sentences.length, 1);
+  const avgWordLength = words.reduce((sum, word) => sum + word.replace(/'/g, "").length, 0) / sampleWordCount;
+  const firstPersonCount = (text.match(/\b(I|I'm|I've|I'd|me|my|mine|we|we're|we've|our|us)\b/gi) || []).length;
+  const contractionCount = (text.match(/\b\w+'\w+\b/g) || []).length;
+  const bulletLike = /(^|\n)\s*[-*]/.test(text);
+
+  const voice = [];
+  const notes = [];
+  if (avgSentenceLength <= 10) voice.push("leans concise and direct");
+  if (avgSentenceLength > 18) voice.push("often writes in longer, connected sentences");
+  if (firstPersonCount / sampleWordCount > 0.03) voice.push("uses first-person phrasing comfortably");
+  if (contractionCount / sampleWordCount > 0.04) voice.push("uses contractions and a conversational tone");
+  if (bulletLike) notes.push("sometimes organizes thoughts in bullet-like structure");
+  if (/\b(maybe|probably|sort of|kind of)\b/i.test(text)) notes.push("sometimes softens claims");
+  if (/\b(because|therefore|however|although|while)\b/i.test(text)) notes.push("often explains reasoning explicitly");
+  if (!voice.length) voice.push("prefers a neutral student voice");
+
+  return {
+    voice: Array.from(new Set(voice)).slice(0, 4),
+    notes: Array.from(new Set(notes)).slice(0, 4),
+    metrics: {
+      sampleCount: 1,
+      avgSentenceLength,
+      avgWordLength,
+      firstPersonRatio: firstPersonCount / sampleWordCount,
+      contractionRatio: contractionCount / sampleWordCount
+    }
+  };
+}
+
+function mergeWritingMetrics(existing, incoming) {
+  const previousCount = Number(existing?.sampleCount) || 0;
+  const nextCount = previousCount + (Number(incoming?.sampleCount) || 0);
+  if (!nextCount) return createEmptyUserMemory().writing.metrics;
+
+  const mergeAverage = (oldValue, newValue) => (
+    ((Number(oldValue) || 0) * previousCount + (Number(newValue) || 0) * (Number(incoming?.sampleCount) || 0)) / nextCount
+  );
+
+  return {
+    sampleCount: nextCount,
+    avgSentenceLength: mergeAverage(existing?.avgSentenceLength, incoming?.avgSentenceLength),
+    avgWordLength: mergeAverage(existing?.avgWordLength, incoming?.avgWordLength),
+    firstPersonRatio: mergeAverage(existing?.firstPersonRatio, incoming?.firstPersonRatio),
+    contractionRatio: mergeAverage(existing?.contractionRatio, incoming?.contractionRatio)
+  };
+}
+
+function buildWritingStyleSummary(writing) {
+  const memory = writing || {};
+  const parts = [];
+  if (Array.isArray(memory.voice) && memory.voice.length) {
+    parts.push(memory.voice.join(" | "));
+  }
+  if (Array.isArray(memory.notes) && memory.notes.length) {
+    parts.push(memory.notes.join(" | "));
+  }
+  const metrics = memory.metrics || {};
+  if ((metrics.sampleCount || 0) > 0) {
+    if ((metrics.avgSentenceLength || 0) <= 10) parts.push("average sentence length is fairly short");
+    if ((metrics.avgSentenceLength || 0) > 18) parts.push("average sentence length is fairly long");
+    if ((metrics.firstPersonRatio || 0) > 0.03) parts.push("first-person voice is part of the user's natural style");
+    if ((metrics.contractionRatio || 0) > 0.04) parts.push("a conversational rhythm shows up consistently");
+  }
+  return parts.join(" | ");
+}
+
+function extractGoalSignals(text) {
+  return extractMemoryMatches(text, [
+    /\b(?:i need to|i want to|i'm trying to|i am trying to|my goal is to)\s+([^.!?\n]+)/gi,
+    /\b(?:help me|can you help me)\s+([^.!?\n]+)/gi
+  ]);
+}
+
+function extractConcernSignals(text) {
+  return extractMemoryMatches(text, [
+    /\b(?:i struggle with|i'm struggling with|i am struggling with|i keep messing up|i get stuck on)\s+([^.!?\n]+)/gi,
+    /\b(?:this is hard because|this is difficult because)\s+([^.!?\n]+)/gi
+  ]);
+}
+
+function extractPreferenceSignals(text) {
+  return extractMemoryMatches(text, [
+    /\b(?:i prefer|i like|i usually write|i usually prefer)\s+([^.!?\n]+)/gi,
+    /\b(?:keep it|make it)\s+(simple|concise|clear|direct|detailed|formal|casual)\b/gi
+  ]).map(item => item.replace(/\s+/g, " ").trim());
+}
+
+function extractMemoryMatches(text, patterns) {
+  const matches = [];
+  patterns.forEach(pattern => {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      const captured = truncateText(String(match[1] || "").trim(), 120);
+      if (captured) matches.push(captured);
+    }
+  });
+  return Array.from(new Set(matches)).slice(0, 4);
 }
 
 function actionableAssignments() {
