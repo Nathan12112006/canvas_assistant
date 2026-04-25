@@ -1,4 +1,4 @@
-
+ 
 const STORAGE_KEYS = {
   sessionToken: "canvasDashboardSessionToken"
 };
