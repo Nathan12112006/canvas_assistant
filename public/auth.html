@@ -204,10 +204,15 @@
 
       <section class="dashboard-view" id="dashboardView-ai">
         <section class="panel dashboard-ai-panel">
-          <div class="panel-header">
-            <div>
+          <div class="studio-hero">
+            <div class="studio-hero-copy">
               <div class="card-heading">AI Workspace</div>
               <p class="section-copy">Chat, notes, homework, essays, and draft review live here in one dedicated tab.</p>
+            </div>
+            <div class="studio-hero-badges">
+              <span class="studio-badge">Conversation Memory</span>
+              <span class="studio-badge">Writing Style Aware</span>
+              <span class="studio-badge">Grounded In Canvas</span>
             </div>
           </div>
 
@@ -221,100 +226,151 @@
             </div>
 
             <section class="studio-view active" id="tab-chat">
-              <div class="tool-grid">
-                <div>
-                  <label class="field-label" for="chatCourseSelect">Course context</label>
-                  <select id="chatCourseSelect" class="text-input"></select>
+              <div class="studio-surface studio-surface-chat">
+                <div class="studio-view-head">
+                  <div>
+                    <div class="studio-kicker">Live Conversation</div>
+                    <h3>Course-aware chat</h3>
+                  </div>
+                  <p class="helper-copy">Keep the thread going naturally. The assistant now remembers recent context, long-term goals, and your writing voice.</p>
                 </div>
-                <div>
-                  <div class="field-label">Concept explainer</div>
-                  <div class="helper-copy">Select a course when you want explanations tied to that class's vocabulary, assignments, and announcement language.</div>
+
+                <div class="tool-grid tool-grid-chat">
+                  <div>
+                    <label class="field-label" for="chatCourseSelect">Course context</label>
+                    <select id="chatCourseSelect" class="text-input"></select>
+                  </div>
+                  <div class="studio-tip-card">
+                    <div class="field-label">Concept explainer</div>
+                    <div class="helper-copy">Select a course when you want explanations tied to that class's vocabulary, assignments, and announcement language.</div>
+                  </div>
                 </div>
-              </div>
-              <div id="chatMessages" class="chat-messages"></div>
-              <div class="chat-input-row">
-                <textarea id="chatInput" class="text-area compact" rows="3" placeholder="Ask what to work on next, or explain a concept using your actual course context."></textarea>
-                <button id="chatSendBtn" class="primary-btn">Send</button>
+
+                <div id="chatMessages" class="chat-messages"></div>
+                <div class="chat-input-row studio-composer">
+                  <textarea id="chatInput" class="text-area compact studio-composer-input" rows="3" placeholder="Ask what to work on next, continue a plan, or explain a concept using your actual course context."></textarea>
+                  <button id="chatSendBtn" class="primary-btn studio-send-btn">Send</button>
+                </div>
               </div>
             </section>
 
             <section class="studio-view" id="tab-notes">
-              <div class="tool-grid">
-                <div>
-                  <label class="field-label" for="notesCourseSelect">Course</label>
-                  <select id="notesCourseSelect" class="text-input"></select>
+              <div class="studio-surface">
+                <div class="studio-view-head">
+                  <div>
+                    <div class="studio-kicker">Study Build</div>
+                    <h3>Notes generator</h3>
+                  </div>
+                  <p class="helper-copy">Generate cleaner review notes that stay grounded in announcements, assignments, and instructor patterns.</p>
                 </div>
-                <div>
-                  <label class="field-label" for="notesFocusInput">Focus</label>
-                  <input id="notesFocusInput" class="text-input" type="text" placeholder="Midterm review, week 5, chapter 8">
+
+                <div class="tool-grid">
+                  <div>
+                    <label class="field-label" for="notesCourseSelect">Course</label>
+                    <select id="notesCourseSelect" class="text-input"></select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="notesFocusInput">Focus</label>
+                    <input id="notesFocusInput" class="text-input" type="text" placeholder="Midterm review, week 5, chapter 8">
+                  </div>
                 </div>
+                <div class="helper-copy studio-inline-copy">Study notes automatically keep professor patterns in mind based on assignments, rubrics, and announcements.</div>
+                <button id="notesBtn" class="primary-btn studio-action-btn">Generate Notes</button>
+                <div id="notesOutput" class="result-area"></div>
               </div>
-              <div class="helper-copy">Study notes automatically keep professor patterns in mind based on assignments, rubrics, and announcements.</div>
-              <button id="notesBtn" class="primary-btn">Generate Notes</button>
-              <div id="notesOutput" class="result-area"></div>
             </section>
 
             <section class="studio-view" id="tab-homework">
-              <div class="tool-grid">
-                <div>
-                  <label class="field-label" for="homeworkCourseSelect">Course</label>
-                  <select id="homeworkCourseSelect" class="text-input"></select>
+              <div class="studio-surface">
+                <div class="studio-view-head">
+                  <div>
+                    <div class="studio-kicker">Assignment Support</div>
+                    <h3>Homework help</h3>
+                  </div>
+                  <p class="helper-copy">Use Canvas assignment details, your current work, and the specific kind of help you need to get a grounded response.</p>
                 </div>
-                <div>
-                  <label class="field-label" for="homeworkAssignmentSelect">Assignment</label>
-                  <select id="homeworkAssignmentSelect" class="text-input"></select>
+
+                <div class="tool-grid">
+                  <div>
+                    <label class="field-label" for="homeworkCourseSelect">Course</label>
+                    <select id="homeworkCourseSelect" class="text-input"></select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="homeworkAssignmentSelect">Assignment</label>
+                    <select id="homeworkAssignmentSelect" class="text-input"></select>
+                  </div>
                 </div>
+                <label class="field-label" for="homeworkNeedInput">What help do you need?</label>
+                <textarea id="homeworkNeedInput" class="text-area" rows="3" placeholder="Explain the method, check my logic, help me outline the solution, debug the code..."></textarea>
+                <label class="field-label" for="homeworkWorkInput">Prompt or current work</label>
+                <textarea id="homeworkWorkInput" class="text-area studio-large-input" rows="7" placeholder="Paste the assignment prompt, your draft, equations, code, or questions here."></textarea>
+                <button id="homeworkBtn" class="primary-btn studio-action-btn">Get Homework Help</button>
+                <div id="homeworkOutput" class="result-area"></div>
               </div>
-              <label class="field-label" for="homeworkNeedInput">What help do you need?</label>
-              <textarea id="homeworkNeedInput" class="text-area" rows="3" placeholder="Explain the method, check my logic, help me outline the solution, debug the code..."></textarea>
-              <label class="field-label" for="homeworkWorkInput">Prompt or current work</label>
-              <textarea id="homeworkWorkInput" class="text-area" rows="7" placeholder="Paste the assignment prompt, your draft, equations, code, or questions here."></textarea>
-              <button id="homeworkBtn" class="primary-btn">Get Homework Help</button>
-              <div id="homeworkOutput" class="result-area"></div>
             </section>
 
             <section class="studio-view" id="tab-essay">
-              <div class="tool-grid">
-                <div>
-                  <label class="field-label" for="essayCourseSelect">Course</label>
-                  <select id="essayCourseSelect" class="text-input"></select>
+              <div class="studio-surface">
+                <div class="studio-view-head">
+                  <div>
+                    <div class="studio-kicker">Draft Coaching</div>
+                    <h3>Essay help</h3>
+                  </div>
+                  <p class="helper-copy">The assistant now remembers your writing tendencies and tries to preserve your natural voice while improving the work.</p>
                 </div>
-                <div>
-                  <label class="field-label" for="essayModeSelect">Essay task</label>
-                  <select id="essayModeSelect" class="text-input">
-                    <option value="outline">Build an outline</option>
-                    <option value="thesis">Strengthen thesis</option>
-                    <option value="draft">Draft a section</option>
-                    <option value="revise">Revise what I wrote</option>
-                  </select>
+
+                <div class="tool-grid">
+                  <div>
+                    <label class="field-label" for="essayCourseSelect">Course</label>
+                    <select id="essayCourseSelect" class="text-input"></select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="essayModeSelect">Essay task</label>
+                    <select id="essayModeSelect" class="text-input">
+                      <option value="outline">Build an outline</option>
+                      <option value="thesis">Strengthen thesis</option>
+                      <option value="draft">Draft a section</option>
+                      <option value="revise">Revise what I wrote</option>
+                    </select>
+                  </div>
                 </div>
+                <label class="field-label" for="essayAssignmentSelect">Canvas assignment</label>
+                <select id="essayAssignmentSelect" class="text-input"></select>
+                <div class="helper-copy studio-inline-copy">Essay help uses the selected Canvas assignment and rubric automatically. Add optional context below only if something important is missing from Canvas.</div>
+                <label class="field-label" for="essayExtraInput">Optional extra context</label>
+                <textarea id="essayExtraInput" class="text-area" rows="4" placeholder="Optional: professor comments, special instructions from class, source ideas, or anything not shown in Canvas."></textarea>
+                <label class="field-label" for="essayDraftInput">Your answers, thesis, notes, or draft</label>
+                <textarea id="essayDraftInput" class="text-area studio-large-input" rows="8" placeholder="First click asks targeted questions. Then answer them here and click again to build the draft help."></textarea>
+                <button id="essayBtn" class="primary-btn studio-action-btn">Start Essay Coaching</button>
+                <div id="essayOutput" class="result-area"></div>
               </div>
-              <label class="field-label" for="essayAssignmentSelect">Canvas assignment</label>
-              <select id="essayAssignmentSelect" class="text-input"></select>
-              <div class="helper-copy">Essay help uses the selected Canvas assignment and rubric automatically. Add optional context below only if something important is missing from Canvas.</div>
-              <label class="field-label" for="essayExtraInput">Optional extra context</label>
-              <textarea id="essayExtraInput" class="text-area" rows="4" placeholder="Optional: professor comments, special instructions from class, source ideas, or anything not shown in Canvas."></textarea>
-              <label class="field-label" for="essayDraftInput">Your answers, thesis, notes, or draft</label>
-              <textarea id="essayDraftInput" class="text-area" rows="8" placeholder="First click asks targeted questions. Then answer them here and click again to build the draft help."></textarea>
-              <button id="essayBtn" class="primary-btn">Start Essay Coaching</button>
-              <div id="essayOutput" class="result-area"></div>
             </section>
 
             <section class="studio-view" id="tab-scorer">
-              <div class="tool-grid">
-                <div>
-                  <label class="field-label" for="scorerCourseSelect">Course</label>
-                  <select id="scorerCourseSelect" class="text-input"></select>
+              <div class="studio-surface">
+                <div class="studio-view-head">
+                  <div>
+                    <div class="studio-kicker">Feedback Pass</div>
+                    <h3>Draft scorer</h3>
+                  </div>
+                  <p class="helper-copy">Check a draft against assignment signals and recurring professor expectations before you submit.</p>
                 </div>
-                <div>
-                  <label class="field-label" for="scorerAssignmentSelect">Assignment or rubric source</label>
-                  <select id="scorerAssignmentSelect" class="text-input"></select>
+
+                <div class="tool-grid">
+                  <div>
+                    <label class="field-label" for="scorerCourseSelect">Course</label>
+                    <select id="scorerCourseSelect" class="text-input"></select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="scorerAssignmentSelect">Assignment or rubric source</label>
+                    <select id="scorerAssignmentSelect" class="text-input"></select>
+                  </div>
                 </div>
+                <label class="field-label" for="scorerDraftInput">Paste your draft</label>
+                <textarea id="scorerDraftInput" class="text-area studio-large-input" rows="10" placeholder="Paste the essay draft you want scored before submitting."></textarea>
+                <button id="scorerBtn" class="primary-btn studio-action-btn">Score Draft</button>
+                <div id="scorerOutput" class="result-area"></div>
               </div>
-              <label class="field-label" for="scorerDraftInput">Paste your draft</label>
-              <textarea id="scorerDraftInput" class="text-area" rows="10" placeholder="Paste the essay draft you want scored before submitting."></textarea>
-              <button id="scorerBtn" class="primary-btn">Score Draft</button>
-              <div id="scorerOutput" class="result-area"></div>
             </section>
           </section>
         </section>
