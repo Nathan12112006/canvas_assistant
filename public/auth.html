@@ -161,6 +161,7 @@
 
           <section class="panel agenda-panel">
             <div class="card-heading">Priority Queue</div>
+            <p class="section-copy">Mark Canvas work done, and keep your own tasks in the same flow.</p>
             <div id="priorityList" class="mini-list"></div>
           </section>
         </aside>
@@ -178,10 +179,11 @@
             <div class="panel-header">
               <div>
                 <div class="card-heading">Calendar</div>
-                <p class="section-copy">Assignments and personal events, organized by date.</p>
+                <p class="section-copy">Assignments and personal tasks, organized by date and completion status.</p>
               </div>
               <div class="calendar-month-nav">
                 <button id="calendarPrevMonthBtn" class="calendar-nav-btn" type="button" aria-label="Previous month">Prev</button>
+                <select id="calendarMonthSelect" class="text-input calendar-month-select" aria-label="Choose month"></select>
                 <div id="calendarMonthLabel" class="calendar-month-label"></div>
                 <button id="calendarNextMonthBtn" class="calendar-nav-btn" type="button" aria-label="Next month">Next</button>
               </div>
@@ -189,11 +191,11 @@
             <div class="calendar-tools">
               <div class="calendar-tool-grid">
                 <div>
-                  <label class="field-label" for="calendarEventTitle">Event title</label>
-                  <input id="calendarEventTitle" class="text-input" type="text" placeholder="Study group, exam, meeting">
+                  <label class="field-label" for="calendarEventTitle">Task title</label>
+                  <input id="calendarEventTitle" class="text-input" type="text" placeholder="Study group, draft intro, finish worksheet">
                 </div>
                 <div>
-                  <label class="field-label" for="calendarEventDateTime">Date and time</label>
+                  <label class="field-label" for="calendarEventDateTime">Due date and time</label>
                   <input id="calendarEventDateTime" class="text-input" type="datetime-local">
                 </div>
               </div>
@@ -203,7 +205,7 @@
                   <input id="calendarEventNotes" class="text-input" type="text" placeholder="Optional details">
                 </div>
                 <div class="calendar-tool-actions">
-                  <button id="addCalendarEventBtn" class="primary-btn" type="button">Add Event</button>
+                  <button id="addCalendarEventBtn" class="primary-btn" type="button">Add Task</button>
                 </div>
               </div>
             </div>

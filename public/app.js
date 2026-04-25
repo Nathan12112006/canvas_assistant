@@ -50,6 +50,7 @@ const elements = {
   priorityList: qs("#priorityList"),
   syncStamp: qs("#syncStamp"),
   calendarMonthLabel: qs("#calendarMonthLabel"),
+  calendarMonthSelect: qs("#calendarMonthSelect"),
   calendarPrevMonthBtn: qs("#calendarPrevMonthBtn"),
   calendarNextMonthBtn: qs("#calendarNextMonthBtn"),
   calendarEventTitle: qs("#calendarEventTitle"),
@@ -117,6 +118,7 @@ function bindEvents() {
   elements.addCalendarEventBtn?.addEventListener("click", addCalendarEvent);
   elements.calendarPrevMonthBtn?.addEventListener("click", () => shiftCalendarMonth(-1));
   elements.calendarNextMonthBtn?.addEventListener("click", () => shiftCalendarMonth(1));
+  elements.calendarMonthSelect?.addEventListener("change", handleCalendarMonthSelect);
   elements.priorityList?.addEventListener("click", handleAssignmentToggleClick);
   elements.calendarAgenda?.addEventListener("click", handleCalendarAgendaClick);
   elements.chatInput?.addEventListener("keydown", event => {
@@ -251,7 +253,7 @@ function applyAccountSession(username, account) {
   state.settings = { canvasDomain: account.canvasDomain || "", canvasToken: account.canvasToken || "" };
   state.hiddenCourses = readJson(userScopedKey("hiddenCourses"), []);
   state.completedAssignments = readJson(userScopedKey("completedAssignments"), []);
-  state.customEvents = readJson(userScopedKey("customEvents"), []);
+  state.customEvents = normalizeCustomItems(readJson(userScopedKey("customEvents"), []));
   state.chatHistory = readJson(userScopedKey("chatHistory"), []);
   state.essayCoach = null;
   elements.settingsDomainInput.value = state.settings.canvasDomain;
@@ -381,13 +383,16 @@ function renderHeader() {
 function renderOverview() {
   const summary = state.context?.summary || {};
   const activeAssignments = actionableAssignments();
+  const personalTasks = customCalendarEvents();
+  const completedCount = visibleAssignments().filter(item => item.isSubmitted || item.isManuallyCompleted).length
+    + personalTasks.filter(item => item.isCompleted).length;
   const items = [
     { label: "Courses", value: visibleCourses().length },
     { label: "Upcoming", value: activeAssignments.filter(item => !item.isMissing).length },
     { label: "Overdue", value: activeAssignments.filter(item => item.isMissing).length },
     { label: "Tracked", value: visibleAssignments().length || summary.assignmentCount || 0 },
-    { label: "Completed", value: visibleAssignments().filter(item => item.isSubmitted || item.isManuallyCompleted).length },
-    { label: "Events", value: customCalendarEvents().length }
+    { label: "Completed", value: completedCount },
+    { label: "Personal Tasks", value: personalTasks.length }
   ];
   elements.overviewStats.innerHTML = items.map(item => `
     <div class="summary-stat">
@@ -424,30 +429,39 @@ function renderCourseFilters() {
 }
 
 function renderPriorityList() {
-  const urgent = actionableAssignments()
-    .sort((left, right) => new Date(left.due_at) - new Date(right.due_at))
+  const urgent = [
+    ...actionableAssignments().map(item => ({ ...item, itemType: "assignment" })),
+    ...customCalendarEvents()
+      .filter(item => !item.isCompleted)
+      .map(item => ({ ...item, itemType: "event" }))
+  ]
+    .sort((left, right) => itemDateValue(left) - itemDateValue(right))
     .slice(0, 5);
 
   elements.priorityList.innerHTML = urgent.length ? urgent.map(item => `
-    <article class="priority-card ${urgencyClass(item)}">
-      <div class="mini-kicker">${escapeHtml(item.courseName)}</div>
-      <strong>${escapeHtml(item.name)}</strong>
+    <article class="priority-card ${calendarItemClass(item)}">
+      <div class="mini-kicker">${escapeHtml(item.itemType === "event" ? "Personal Task" : item.courseName)}</div>
+      <strong>${escapeHtml(itemDisplayName(item))}</strong>
       <div class="priority-meta">
-        <span class="status-chip ${urgencyClass(item)}">${escapeHtml(priorityLabel(item))}</span>
-        <span class="mini-copy">${escapeHtml(formatDateTime(item.due_at))}</span>
+        <span class="status-chip ${calendarItemClass(item)}">${escapeHtml(priorityLabel(item))}</span>
+        <span class="mini-copy">${escapeHtml(formatDateTime(itemDateField(item)))}</span>
       </div>
       <div class="assignment-actions">
-        <button class="ghost-btn assignment-toggle-btn" data-course-id="${escapeHtml(item.courseId)}" data-assignment-id="${escapeHtml(item.id)}" type="button">Mark Complete</button>
+        ${item.itemType === "event"
+          ? `<button class="ghost-btn assignment-toggle-btn" data-event-id="${escapeHtml(item.id)}" data-action="toggle-event" type="button">${item.isCompleted ? "Mark Active" : "Mark Complete"}</button>`
+          : `<button class="ghost-btn assignment-toggle-btn" data-course-id="${escapeHtml(item.courseId)}" data-assignment-id="${escapeHtml(item.id)}" type="button">${item.isManuallyCompleted ? "Mark Active" : "Mark Complete"}</button>`
+        }
         ${item.html_url ? `<a href="${escapeHtml(item.html_url)}" target="_blank" rel="noreferrer">Open in Canvas</a>` : ""}
       </div>
     </article>
-  `).join("") : '<div class="empty-state">No urgent work in the current course view.</div>';
+  `).join("") : '<div class="empty-state">No urgent work or personal tasks in the current course view.</div>';
 }
 
 function renderCalendar() {
   const base = calendarBaseDate();
   const month = base.getMonth();
   const start = startOfCalendarGrid(base.getFullYear(), month);
+  renderCalendarMonthControls(base);
   elements.calendarMonthLabel.textContent = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(base);
 
   const itemsByDay = new Map();
@@ -478,7 +492,7 @@ function renderCalendar() {
         <div class="calendar-day-number">${date.getDate()}</div>
         <div class="calendar-stack">
           ${items.slice(0, 3).map(item => `
-            <div class="assignment-pill ${calendarItemClass(item)} ${item.isManuallyCompleted ? "is-complete" : ""}">
+            <div class="assignment-pill ${calendarItemClass(item)} ${isCalendarItemComplete(item) ? "is-complete" : ""}">
               <div class="assignment-pill-name">${escapeHtml(itemDisplayName(item))}</div>
               <div class="assignment-pill-course">${escapeHtml(itemDisplayMeta(item))}</div>
             </div>
@@ -500,7 +514,7 @@ function renderCalendar() {
   ]
     .sort((left, right) => itemDateValue(left) - itemDateValue(right))
     .slice(0, 8);
-  elements.calendarAgenda.innerHTML = agendaItems.length ? agendaItems.map(renderCalendarAgendaCard).join("") : '<div class="empty-state">No assignments or events in this month.</div>';
+  elements.calendarAgenda.innerHTML = agendaItems.length ? agendaItems.map(renderCalendarAgendaCard).join("") : '<div class="empty-state">No assignments or personal tasks in this month.</div>';
 }
 
 function renderSelectors() {
@@ -926,16 +940,17 @@ function renderAssignmentCard(item) {
 function renderCalendarAgendaCard(item) {
   if (item.itemType === "event") {
     return `
-      <article class="assignment-card assignment-card-event">
-        <div class="assignment-course">Personal Event</div>
+      <article class="assignment-card assignment-card-event ${item.isCompleted ? "is-complete" : ""}">
+        <div class="assignment-course">Personal Task</div>
         <div class="assignment-name">${escapeHtml(item.title)}</div>
         <div class="assignment-meta">
-          <span class="status-chip event">${escapeHtml(priorityLabel(item))}</span>
+          <span class="status-chip ${calendarItemClass(item)}">${escapeHtml(priorityLabel(item))}</span>
           <span class="mini-copy">${escapeHtml(formatDateTime(item.startsAt))}</span>
         </div>
         <div class="mini-copy">${escapeHtml(item.notes || "No additional notes.")}</div>
         <div class="assignment-actions">
-          <button class="ghost-btn assignment-toggle-btn danger-soft" data-event-id="${escapeHtml(item.id)}" data-action="delete-event" type="button">Delete Event</button>
+          <button class="ghost-btn assignment-toggle-btn" data-event-id="${escapeHtml(item.id)}" data-action="toggle-event" type="button">${item.isCompleted ? "Mark Active" : "Mark Complete"}</button>
+          <button class="ghost-btn assignment-toggle-btn danger-soft" data-event-id="${escapeHtml(item.id)}" data-action="delete-event" type="button">Delete Task</button>
         </div>
       </article>
     `;
@@ -961,7 +976,14 @@ function urgencyClass(item) {
 }
 
 function priorityLabel(item) {
-  if (item.itemType === "event") return "Event";
+  if (item.itemType === "event") {
+    if (item.isCompleted) return "Completed";
+    const days = daysUntil(item.startsAt);
+    if (days < 0) return "Past due";
+    if (days === 0) return "Due today";
+    if (days === 1) return "Due tomorrow";
+    return `${days} days left`;
+  }
   if (item.isManuallyCompleted) return "Completed";
   if (item.isMissing) return "Overdue";
   const days = daysUntil(item.due_at);
@@ -980,7 +1002,9 @@ function firstRelevantDate() {
   const now = Date.now();
   const items = [
     ...actionableAssignments().map(item => ({ ...item, itemType: "assignment" })),
-    ...customCalendarEvents().filter(item => new Date(item.startsAt).getTime() >= now - 86400000).map(item => ({ ...item, itemType: "event" }))
+    ...customCalendarEvents()
+      .filter(item => !item.isCompleted && new Date(item.startsAt).getTime() >= now - 86400000)
+      .map(item => ({ ...item, itemType: "event" }))
   ].sort((left, right) => itemDateValue(left) - itemDateValue(right));
   return items[0] ? new Date(itemDateValue(items[0])) : new Date();
 }
@@ -997,8 +1021,17 @@ function calendarBaseDate() {
 
 function shiftCalendarMonth(offset) {
   const base = calendarBaseDate();
-  const next = new Date(base.getFullYear(), base.getMonth() + offset, 1);
+  const next = clampCalendarMonth(new Date(base.getFullYear(), base.getMonth() + offset, 1));
   state.calendarMonthCursor = next.toISOString();
+  renderCalendar();
+}
+
+function handleCalendarMonthSelect() {
+  const value = String(elements.calendarMonthSelect?.value || "");
+  if (!value) return;
+  const selected = new Date(value);
+  if (Number.isNaN(selected.getTime())) return;
+  state.calendarMonthCursor = clampCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1)).toISOString();
   renderCalendar();
 }
 
@@ -1057,7 +1090,7 @@ function actionableAssignments() {
 }
 
 function customCalendarEvents() {
-  return [...state.customEvents].filter(item => item && item.id && item.title && item.startsAt);
+  return normalizeCustomItems(state.customEvents);
 }
 
 function assignmentStorageKey(courseId, assignmentId) {
@@ -1078,6 +1111,7 @@ function persistCompletedAssignments() {
 }
 
 function persistCustomEvents() {
+  state.customEvents = normalizeCustomItems(state.customEvents);
   localStorage.setItem(userScopedKey("customEvents"), JSON.stringify(state.customEvents));
 }
 
@@ -1087,13 +1121,13 @@ function addCalendarEvent() {
   const notes = String(elements.calendarEventNotes?.value || "").trim();
 
   if (!title || !startsAt) {
-    setStatus("error", "Event title and date/time are required.");
+    setStatus("error", "Task title and due date/time are required.");
     return;
   }
 
   const parsedDate = new Date(startsAt);
   if (Number.isNaN(parsedDate.getTime())) {
-    setStatus("error", "Choose a valid event date and time.");
+    setStatus("error", "Choose a valid task date and time.");
     return;
   }
 
@@ -1103,7 +1137,8 @@ function addCalendarEvent() {
       id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       title,
       startsAt: parsedDate.toISOString(),
-      notes
+      notes,
+      isCompleted: false
     }
   ].sort((left, right) => new Date(left.startsAt) - new Date(right.startsAt));
   persistCustomEvents();
@@ -1113,13 +1148,20 @@ function addCalendarEvent() {
   if (elements.calendarEventNotes) elements.calendarEventNotes.value = "";
 
   renderCalendar();
+  renderPriorityList();
   renderOverview();
-  setStatus("ok", `Added event: ${title}.`);
+  setStatus("ok", `Added personal task: ${title}.`);
 }
 
 function handleAssignmentToggleClick(event) {
   const button = event.target.closest(".assignment-toggle-btn");
   if (!button) return;
+
+  if (button.dataset.action === "toggle-event") {
+    toggleCustomEvent(button.dataset.eventId);
+    return;
+  }
+
   const courseId = String(button.dataset.courseId || "");
   const assignmentId = String(button.dataset.assignmentId || "");
   if (!courseId || !assignmentId) return;
@@ -1142,8 +1184,9 @@ function handleCalendarAgendaClick(event) {
     state.customEvents = state.customEvents.filter(item => item.id !== eventId);
     persistCustomEvents();
     renderCalendar();
+    renderPriorityList();
     renderOverview();
-    setStatus("ok", "Event removed from your calendar.");
+    setStatus("ok", "Task removed from your calendar.");
     return;
   }
 
@@ -1151,7 +1194,7 @@ function handleCalendarAgendaClick(event) {
 }
 
 function itemDateValue(item) {
-  return new Date(item.itemType === "event" ? item.startsAt : item.due_at).getTime();
+  return new Date(itemDateField(item)).getTime();
 }
 
 function itemDisplayName(item) {
@@ -1159,13 +1202,110 @@ function itemDisplayName(item) {
 }
 
 function itemDisplayMeta(item) {
-  if (item.itemType === "event") return "Personal Event";
+  if (item.itemType === "event") return "Personal Task";
   return item.courseName;
 }
 
 function calendarItemClass(item) {
-  if (item.itemType === "event") return "event";
+  if (item.itemType === "event") {
+    if (item.isCompleted) return "complete";
+    const days = daysUntil(item.startsAt);
+    if (days <= 1) return "urgent";
+    if (days <= 4) return "soon";
+    return "event";
+  }
   return urgencyClass(item);
+}
+
+function renderCalendarMonthControls(base) {
+  const windowMonths = calendarWindowMonths();
+  if (elements.calendarMonthSelect) {
+    elements.calendarMonthSelect.innerHTML = windowMonths.map(month => `
+      <option value="${escapeHtml(month.toISOString())}" ${isSameMonth(month, base) ? "selected" : ""}>
+        ${escapeHtml(formatCalendarMonth(month))}
+      </option>
+    `).join("");
+  }
+
+  const firstMonth = windowMonths[0];
+  const lastMonth = windowMonths[windowMonths.length - 1];
+  if (elements.calendarPrevMonthBtn) {
+    elements.calendarPrevMonthBtn.disabled = isSameMonth(base, firstMonth);
+  }
+  if (elements.calendarNextMonthBtn) {
+    elements.calendarNextMonthBtn.disabled = isSameMonth(base, lastMonth);
+  }
+}
+
+function calendarWindowMonths() {
+  const anchor = calendarWindowAnchor();
+  const months = [];
+  for (let offset = -6; offset <= 6; offset += 1) {
+    months.push(new Date(anchor.getFullYear(), anchor.getMonth() + offset, 1));
+  }
+  return months;
+}
+
+function calendarWindowAnchor() {
+  const first = firstRelevantDate();
+  return new Date(first.getFullYear(), first.getMonth(), 1);
+}
+
+function clampCalendarMonth(value) {
+  const month = new Date(value.getFullYear(), value.getMonth(), 1);
+  const windowMonths = calendarWindowMonths();
+  const firstMonth = windowMonths[0];
+  const lastMonth = windowMonths[windowMonths.length - 1];
+  if (month < firstMonth) return firstMonth;
+  if (month > lastMonth) return lastMonth;
+  return month;
+}
+
+function isSameMonth(left, right) {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
+}
+
+function formatCalendarMonth(value) {
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(value);
+}
+
+function itemDateField(item) {
+  return item.itemType === "event" ? item.startsAt : item.due_at;
+}
+
+function isCalendarItemComplete(item) {
+  if (item.itemType === "event") return Boolean(item.isCompleted);
+  return Boolean(item.isManuallyCompleted);
+}
+
+function toggleCustomEvent(eventId) {
+  const id = String(eventId || "");
+  if (!id) return;
+
+  state.customEvents = normalizeCustomItems(state.customEvents).map(item => (
+    item.id === id ? { ...item, isCompleted: !item.isCompleted } : item
+  ));
+  persistCustomEvents();
+  renderCalendar();
+  renderPriorityList();
+  renderOverview();
+
+  const toggled = state.customEvents.find(item => item.id === id);
+  if (toggled) {
+    setStatus("ok", toggled.isCompleted ? `Completed personal task: ${toggled.title}.` : `Reopened personal task: ${toggled.title}.`);
+  }
+}
+
+function normalizeCustomItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter(item => item && item.id && item.title && item.startsAt)
+    .map(item => ({
+      ...item,
+      notes: String(item.notes || ""),
+      isCompleted: Boolean(item.isCompleted)
+    }))
+    .sort((left, right) => new Date(left.startsAt) - new Date(right.startsAt));
 }
 
 function escapeHtml(value) {

@@ -171,6 +171,11 @@ a { color: inherit; }
   justify-content: flex-end;
 }
 
+.calendar-month-select {
+  min-width: 190px;
+  width: auto;
+}
+
 .story-card {
   border-radius: 22px;
   padding: 16px 18px;
@@ -418,6 +423,12 @@ a { color: inherit; }
 .priority-card.urgent { border-left-color: var(--danger); background: rgba(255, 244, 242, 0.8); }
 .priority-card.soon { border-left-color: #c38818; background: rgba(255, 248, 235, 0.84); }
 .priority-card.ok { border-left-color: var(--ok); background: rgba(242, 250, 245, 0.8); }
+.priority-card.event { border-left-color: #2d74b6; background: rgba(241, 248, 255, 0.88); }
+.priority-card.complete {
+  border-left-color: rgba(93, 106, 99, 0.4);
+  background: rgba(244, 245, 244, 0.84);
+  opacity: 0.84;
+}
 .priority-meta {
   display: flex;
   justify-content: space-between;
@@ -456,6 +467,16 @@ a { color: inherit; }
   cursor: pointer;
   backdrop-filter: blur(12px);
   transition: transform 140ms ease, background 140ms ease;
+}
+
+.calendar-nav-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.calendar-nav-btn:disabled:hover {
+  background: rgba(255, 255, 255, 0.46);
+  transform: none;
 }
 
 .calendar-nav-btn:hover {
