@@ -22,10 +22,10 @@
       </a>
 
       <nav class="home-links" aria-label="Homepage sections">
-        <a href="#how-it-works">How It Works</a>
-        <a href="#features">Features</a>
-        <a href="#why-it-works">Why It Helps</a>
-        <a href="#faq">FAQ</a>
+        <a href="#how-it-works" data-home-link="how-it-works">How It Works</a>
+        <a href="#features" data-home-link="features">Features</a>
+        <a href="#why-it-works" data-home-link="why-it-works">Why It Helps</a>
+        <a href="#faq" data-home-link="faq">FAQ</a>
       </nav>
 
       <div class="home-auth-actions">
@@ -97,11 +97,11 @@
                     <div class="hero-mockup-agenda compact">
                       <div class="hero-mockup-item urgent">
                         <strong>Research Reflection</strong>
-                        <span>English 102 · Due today</span>
+                        <span>English 102 &middot; Due today</span>
                       </div>
                       <div class="hero-mockup-item soon">
                         <strong>Lab Report</strong>
-                        <span>Biology · Due tomorrow</span>
+                        <span>Biology &middot; Due tomorrow</span>
                       </div>
                     </div>
                   </div>
@@ -111,15 +111,15 @@
                 <div class="hero-priority-list">
                   <div class="hero-priority-card urgent">
                     <strong>Research Reflection</strong>
-                    <span>English 102 · due today · 2 tasks left</span>
+                    <span>English 102 &middot; due today &middot; 2 tasks left</span>
                   </div>
                   <div class="hero-priority-card soon">
                     <strong>Lab Report</strong>
-                    <span>Biology · due tomorrow · draft missing</span>
+                    <span>Biology &middot; due tomorrow &middot; draft missing</span>
                   </div>
                   <div class="hero-priority-card ok">
                     <strong>Reading Quiz</strong>
-                    <span>History · due Friday · ready to submit</span>
+                    <span>History &middot; due Friday &middot; ready to submit</span>
                   </div>
                 </div>
               </section>
@@ -253,15 +253,28 @@
           </article>
           <article class="home-faq-card">
             <h3>What does the app actually use from Canvas?</h3>
-            <p>It builds the dashboard from course data such as assignments, announcements, due dates, and submission state so the assistant can stay relevant to the student’s real coursework.</p>
+            <p>It builds the dashboard from course data such as assignments, announcements, due dates, and submission state so the assistant can stay relevant to the student's real coursework.</p>
           </article>
         </div>
       </section>
     </main>
+
+    <footer class="home-footer">
+      <div class="home-footer-brand">
+        <span class="home-footer-title">Canvas Assistant</span>
+        <span class="home-footer-copy">Built for students on Canvas LMS.</span>
+      </div>
+      <nav class="home-footer-links" aria-label="Footer">
+        <a href="#how-it-works">How It Works</a>
+        <a href="#features">Features</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </footer>
   </div>
   <script src="/home.js"></script>
 </body>
 </html>
+
 
 
 

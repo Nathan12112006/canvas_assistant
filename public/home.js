@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCountdowns();
   setupPreviewTabs();
   setupScrollReveal();
+  setupSectionAwareNav();
 });
 
 function setupCountdowns() {
@@ -52,4 +53,32 @@ function setupScrollReveal() {
   }, { threshold: 0.14, rootMargin: "0px 0px -40px 0px" });
 
   items.forEach(item => observer.observe(item));
+}
+
+function setupSectionAwareNav() {
+  const links = Array.from(document.querySelectorAll("[data-home-link]"));
+  const sections = links
+    .map(link => document.getElementById(link.dataset.homeLink))
+    .filter(Boolean);
+
+  if (!links.length || !sections.length) return;
+
+  const activate = id => {
+    links.forEach(link => link.classList.toggle("is-active", link.dataset.homeLink === id));
+  };
+
+  const observer = new IntersectionObserver(entries => {
+    const visible = entries
+      .filter(entry => entry.isIntersecting)
+      .sort((left, right) => right.intersectionRatio - left.intersectionRatio);
+
+    if (visible[0]?.target?.id) {
+      activate(visible[0].target.id);
+    }
+  }, {
+    threshold: [0.2, 0.4, 0.6],
+    rootMargin: "-18% 0px -55% 0px"
+  });
+
+  sections.forEach(section => observer.observe(section));
 }
