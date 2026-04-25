@@ -1,22 +1,28 @@
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const crypto = require("crypto");
 
 loadDotEnv();
 
 const PORT = process.env.PORT || 8787;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const SESSION_SECRET = process.env.SESSION_SECRET || OPENAI_API_KEY;
 const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "*")
   .split(",")
   .map(value => value.trim())
   .filter(Boolean);
 const PUBLIC_DIR = path.join(__dirname, "public");
+const DATA_DIR = path.join(__dirname, "data");
+const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
 
 if (!OPENAI_API_KEY) {
   console.error("Missing OPENAI_API_KEY.");
   process.exit(1);
 }
+
+ensureDataFiles();
 
 const server = http.createServer(async (req, res) => {
   if (req.method === "OPTIONS") {
@@ -31,6 +37,31 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && req.url === "/api/chat") {
     await handleChat(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/auth/signup") {
+    await handleSignup(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/auth/login") {
+    await handleLogin(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/auth/session") {
+    await handleSession(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/auth/update-profile") {
+    await handleUpdateProfile(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/auth/update-canvas") {
+    await handleUpdateCanvas(req, res);
     return;
   }
 
@@ -78,21 +109,203 @@ async function handleChat(req, res) {
   }
 }
 
-async function handleCanvasContext(req, res) {
+async function handleSignup(req, res) {
   try {
     const body = await readJsonBody(req);
-    const domain = normalizeCanvasDomain(body.canvasDomain);
-    const token = String(body.canvasToken || "").trim();
+    const username = normalizeUsername(body.username);
+    const password = String(body.password || "").trim();
+    const canvasDomain = normalizeCanvasDomain(body.canvasDomain);
+    const canvasToken = String(body.canvasToken || "").trim();
 
-    if (!domain || !token) {
-      sendJson(res, 400, { error: "Canvas domain and token are required." }, req);
+    if (!username || !password || !canvasDomain || !canvasToken) {
+      sendJson(res, 400, { error: "Username, password, Canvas domain, and Canvas token are required." }, req);
       return;
     }
 
-    const context = await fetchCanvasContext(token, domain);
+    if (password.length < 6) {
+      sendJson(res, 400, { error: "Choose a password with at least 6 characters." }, req);
+      return;
+    }
+
+    const accounts = readAccounts();
+    if (accounts[username]) {
+      sendJson(res, 409, { error: "That username already exists." }, req);
+      return;
+    }
+
+    await fetchCanvasContext(canvasToken, canvasDomain);
+
+    const salt = createSalt();
+    const now = new Date().toISOString();
+    accounts[username] = {
+      username,
+      passwordSalt: salt,
+      passwordHash: hashPassword(password, salt),
+      canvasDomain,
+      canvasToken,
+      createdAt: now,
+      updatedAt: now
+    };
+    writeAccounts(accounts);
+
+    sendJson(res, 200, {
+      token: createSessionToken(username),
+      account: sanitizeAccount(accounts[username])
+    }, req);
+  } catch (error) {
+    sendJson(res, 500, { error: error.message || "Signup failed." }, req);
+  }
+}
+
+async function handleLogin(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const username = normalizeUsername(body.username);
+    const password = String(body.password || "").trim();
+    const account = readAccounts()[username];
+
+    if (!username || !password) {
+      sendJson(res, 400, { error: "Username and password are required." }, req);
+      return;
+    }
+
+    if (!account) {
+      sendJson(res, 404, { error: "That username does not exist." }, req);
+      return;
+    }
+
+    const passwordHash = hashPassword(password, account.passwordSalt);
+    if (passwordHash !== account.passwordHash) {
+      sendJson(res, 401, { error: "Incorrect password." }, req);
+      return;
+    }
+
+    sendJson(res, 200, {
+      token: createSessionToken(username),
+      account: sanitizeAccount(account)
+    }, req);
+  } catch (error) {
+    sendJson(res, 500, { error: error.message || "Login failed." }, req);
+  }
+}
+
+async function handleSession(req, res) {
+  try {
+    const account = requireAuthenticatedAccount(req);
+    sendJson(res, 200, { account: sanitizeAccount(account) }, req);
+  } catch (error) {
+    sendJson(res, 401, { error: error.message || "Unauthorized." }, req);
+  }
+}
+
+async function handleUpdateProfile(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const authenticated = requireAuthenticatedAccount(req);
+    const currentUsername = authenticated.username;
+    const nextUsername = normalizeUsername(body.username);
+    const nextPassword = String(body.password || "").trim();
+    const accounts = readAccounts();
+    const account = accounts[currentUsername];
+
+    if (!account) {
+      sendJson(res, 404, { error: "Account not found." }, req);
+      return;
+    }
+
+    if (!nextUsername) {
+      sendJson(res, 400, { error: "Username is required." }, req);
+      return;
+    }
+
+    if (nextUsername !== currentUsername && accounts[nextUsername]) {
+      sendJson(res, 409, { error: "That username already exists." }, req);
+      return;
+    }
+
+    if (nextPassword && nextPassword.length < 6) {
+      sendJson(res, 400, { error: "Choose a password with at least 6 characters." }, req);
+      return;
+    }
+
+    const nextAccount = {
+      ...account,
+      username: nextUsername,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (nextPassword) {
+      const salt = createSalt();
+      nextAccount.passwordSalt = salt;
+      nextAccount.passwordHash = hashPassword(nextPassword, salt);
+    }
+
+    delete accounts[currentUsername];
+    accounts[nextUsername] = nextAccount;
+    writeAccounts(accounts);
+
+    sendJson(res, 200, {
+      token: createSessionToken(nextUsername),
+      account: sanitizeAccount(nextAccount)
+    }, req);
+  } catch (error) {
+    sendJson(res, error.message === "Unauthorized." ? 401 : 500, { error: error.message || "Profile update failed." }, req);
+  }
+}
+
+async function handleUpdateCanvas(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const authenticated = requireAuthenticatedAccount(req);
+    const accounts = readAccounts();
+    const account = accounts[authenticated.username];
+    if (!account) {
+      sendJson(res, 404, { error: "Account not found." }, req);
+      return;
+    }
+
+    const nextDomain = normalizeCanvasDomain(body.canvasDomain || account.canvasDomain);
+    const suppliedToken = String(body.canvasToken || "").trim();
+    const nextToken = suppliedToken || account.canvasToken;
+
+    if (!nextDomain) {
+      sendJson(res, 400, { error: "Canvas domain is required." }, req);
+      return;
+    }
+
+    if (!nextToken) {
+      sendJson(res, 400, { error: "Canvas token is required to save Canvas settings." }, req);
+      return;
+    }
+
+    if (!suppliedToken && nextDomain !== account.canvasDomain) {
+      sendJson(res, 400, { error: "Provide a Canvas token when changing the Canvas domain." }, req);
+      return;
+    }
+
+    await fetchCanvasContext(nextToken, nextDomain);
+
+    accounts[authenticated.username] = {
+      ...account,
+      canvasDomain: nextDomain,
+      canvasToken: nextToken,
+      updatedAt: new Date().toISOString()
+    };
+    writeAccounts(accounts);
+
+    sendJson(res, 200, { account: sanitizeAccount(accounts[authenticated.username]) }, req);
+  } catch (error) {
+    sendJson(res, error.message === "Unauthorized." ? 401 : 500, { error: error.message || "Canvas update failed." }, req);
+  }
+}
+
+async function handleCanvasContext(req, res) {
+  try {
+    const account = requireAuthenticatedAccount(req);
+    const context = await fetchCanvasContext(account.canvasToken, account.canvasDomain);
     sendJson(res, 200, { context }, req);
   } catch (error) {
-    sendJson(res, 500, { error: error.message || "Canvas request failed." }, req);
+    sendJson(res, error.message === "Unauthorized." ? 401 : 500, { error: error.message || "Canvas request failed." }, req);
   }
 }
 
@@ -307,6 +520,103 @@ function stripHtml(html) {
 
 function normalizeCanvasDomain(value) {
   return String(value || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+function normalizeUsername(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function ensureDataFiles() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  if (!fs.existsSync(ACCOUNTS_FILE)) {
+    fs.writeFileSync(ACCOUNTS_FILE, "{}\n", "utf8");
+  }
+}
+
+function readAccounts() {
+  try {
+    const raw = fs.readFileSync(ACCOUNTS_FILE, "utf8");
+    const data = raw ? JSON.parse(raw) : {};
+    return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeAccounts(accounts) {
+  fs.writeFileSync(ACCOUNTS_FILE, `${JSON.stringify(accounts, null, 2)}\n`, "utf8");
+}
+
+function sanitizeAccount(account) {
+  return {
+    username: account.username,
+    canvasDomain: account.canvasDomain,
+    hasCanvasToken: Boolean(account.canvasToken),
+    createdAt: account.createdAt,
+    updatedAt: account.updatedAt
+  };
+}
+
+function createSalt() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+function hashPassword(password, salt) {
+  return crypto.createHash("sha256").update(`${salt}:${password}`).digest("hex");
+}
+
+function base64UrlEncode(value) {
+  return Buffer.from(value).toString("base64url");
+}
+
+function base64UrlDecode(value) {
+  return Buffer.from(value, "base64url").toString("utf8");
+}
+
+function createSessionToken(username) {
+  const payload = {
+    username,
+    exp: Date.now() + (1000 * 60 * 60 * 24 * 14)
+  };
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(encodedPayload).digest("base64url");
+  return `${encodedPayload}.${signature}`;
+}
+
+function verifySessionToken(token) {
+  const rawToken = String(token || "");
+  const [encodedPayload, signature] = rawToken.split(".");
+  if (!encodedPayload || !signature) throw new Error("Unauthorized.");
+
+  const expectedSignature = crypto.createHmac("sha256", SESSION_SECRET).update(encodedPayload).digest("base64url");
+  if (signature.length !== expectedSignature.length) {
+    throw new Error("Unauthorized.");
+  }
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    throw new Error("Unauthorized.");
+  }
+
+  const payload = JSON.parse(base64UrlDecode(encodedPayload));
+  if (!payload.username || !payload.exp || payload.exp < Date.now()) {
+    throw new Error("Unauthorized.");
+  }
+  return payload;
+}
+
+function readBearerToken(req) {
+  const authHeader = String(req.headers.authorization || "");
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+function requireAuthenticatedAccount(req) {
+  const token = readBearerToken(req);
+  const payload = verifySessionToken(token);
+  const account = readAccounts()[normalizeUsername(payload.username)];
+  if (!account) throw new Error("Unauthorized.");
+  return account;
 }
 
 function serveStatic(req, res) {

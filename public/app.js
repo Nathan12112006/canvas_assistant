@@ -1,7 +1,6 @@
 
 const STORAGE_KEYS = {
-  accounts: "canvasDashboardAccounts",
-  currentUser: "canvasDashboardCurrentUser"
+  sessionToken: "canvasDashboardSessionToken"
 };
 
 const USER_SCOPED_SUFFIXES = [
@@ -17,7 +16,8 @@ const CHAT_MEMORY_LIMIT = 16;
 const state = {
   context: null,
   currentUser: "",
-  settings: { canvasDomain: "", canvasToken: "" },
+  sessionToken: "",
+  settings: { canvasDomain: "", hasCanvasToken: false },
   hiddenCourses: [],
   completedAssignments: [],
   customEvents: [],
@@ -152,7 +152,7 @@ function bindEvents() {
 
 async function boot() {
   setAuthMode(window.location.hash === "#signup" ? "signup" : "login");
-  if (restoreSession()) {
+  if (await restoreSession()) {
     renderChatHistory();
     await loadDashboard(false);
     return;
@@ -163,13 +163,18 @@ async function boot() {
   setStatus("idle", "Sign up once to save your Canvas connection. Future logins only need username and password.");
 }
 
-function restoreSession() {
-  const username = normalizeUsername(localStorage.getItem(STORAGE_KEYS.currentUser));
-  const account = getAccounts()[username];
-  if (!username || !account) return false;
+async function restoreSession() {
+  const sessionToken = String(localStorage.getItem(STORAGE_KEYS.sessionToken) || "").trim();
+  if (!sessionToken) return false;
 
-  applyAccountSession(username, account);
-  return true;
+  try {
+    const data = await authFetch("/api/auth/session", { method: "GET" }, sessionToken);
+    applyAccountSession(data.account.username, data.account, sessionToken);
+    return true;
+  } catch {
+    localStorage.removeItem(STORAGE_KEYS.sessionToken);
+    return false;
+  }
 }
 
 function setAuthMode(mode) {
@@ -197,28 +202,28 @@ function showDashboard() {
 async function handleLogin() {
   const username = normalizeUsername(elements.loginUsernameInput.value);
   const password = elements.loginPasswordInput.value.trim();
-  const account = getAccounts()[username];
 
   if (!username || !password) {
     setStatus("error", "Username and password are required.");
     return;
   }
 
-  if (!account) {
-    setStatus("error", "That username does not exist.");
-    return;
-  }
+  setStatus("loading", "Logging in...");
 
-  const passwordHash = await hashPassword(password, account.passwordSalt);
-  if (passwordHash !== account.passwordHash) {
-    setStatus("error", "Incorrect password.");
-    return;
-  }
+  try {
+    const data = await fetchJson("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password })
+    });
 
-  applyAccountSession(username, account);
-  localStorage.setItem(STORAGE_KEYS.currentUser, username);
-  elements.loginPasswordInput.value = "";
-  await loadDashboard(true);
+    applyAccountSession(data.account.username, data.account, data.token);
+    localStorage.setItem(STORAGE_KEYS.sessionToken, data.token);
+    elements.loginPasswordInput.value = "";
+    await loadDashboard(true);
+  } catch (error) {
+    setStatus("error", error.message || "Login failed.");
+  }
 }
 
 async function handleSignup() {
@@ -226,15 +231,9 @@ async function handleSignup() {
   const password = elements.signupPasswordInput.value.trim();
   const canvasDomain = normalizeDomain(elements.signupDomainInput.value);
   const canvasToken = elements.signupTokenInput.value.trim();
-  const accounts = getAccounts();
 
   if (!username || !password || !canvasDomain || !canvasToken) {
     setStatus("error", "Username, password, Canvas domain, and Canvas token are required.");
-    return;
-  }
-
-  if (accounts[username]) {
-    setStatus("error", "That username already exists.");
     return;
   }
 
@@ -244,34 +243,31 @@ async function handleSignup() {
   }
 
   setStatus("loading", "Checking Canvas before creating your account...");
-  const validation = await validateCanvasCredentials(canvasDomain, canvasToken);
-  if (!validation.ok) {
-    setStatus("error", validation.message);
-    return;
+
+  try {
+    const data = await fetchJson("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password, canvasDomain, canvasToken })
+    });
+
+    applyAccountSession(data.account.username, data.account, data.token);
+    localStorage.setItem(STORAGE_KEYS.sessionToken, data.token);
+    elements.signupPasswordInput.value = "";
+    elements.signupTokenInput.value = "";
+    await loadDashboard(true);
+  } catch (error) {
+    setStatus("error", error.message || "Signup failed.");
   }
-
-  const salt = createSalt();
-  const now = new Date().toISOString();
-  accounts[username] = {
-    username,
-    passwordSalt: salt,
-    passwordHash: await hashPassword(password, salt),
-    canvasDomain,
-    canvasToken,
-    createdAt: now,
-    updatedAt: now
-  };
-  localStorage.setItem(STORAGE_KEYS.accounts, JSON.stringify(accounts));
-  localStorage.setItem(STORAGE_KEYS.currentUser, username);
-
-  applyAccountSession(username, accounts[username]);
-  elements.signupPasswordInput.value = "";
-  await loadDashboard(true);
 }
 
-function applyAccountSession(username, account) {
+function applyAccountSession(username, account, sessionToken = state.sessionToken) {
   state.currentUser = username;
-  state.settings = { canvasDomain: account.canvasDomain || "", canvasToken: account.canvasToken || "" };
+  state.sessionToken = String(sessionToken || "");
+  state.settings = {
+    canvasDomain: account.canvasDomain || "",
+    hasCanvasToken: Boolean(account.hasCanvasToken)
+  };
   state.hiddenCourses = readJson(userScopedKey("hiddenCourses"), []);
   state.completedAssignments = readJson(userScopedKey("completedAssignments"), []);
   state.customEvents = normalizeCustomItems(readJson(userScopedKey("customEvents"), []));
@@ -282,53 +278,50 @@ function applyAccountSession(username, account) {
   elements.settingsUsernameInput.value = username;
   elements.settingsPasswordInput.value = "";
   elements.settingsDomainInput.value = state.settings.canvasDomain;
-  elements.settingsTokenInput.value = state.settings.canvasToken;
+  elements.settingsTokenInput.value = "";
 }
 
 async function saveAccountSettings() {
-  const username = state.currentUser;
-  const accounts = getAccounts();
-  const account = accounts[username];
   const canvasDomain = normalizeDomain(elements.settingsDomainInput.value);
   const canvasToken = elements.settingsTokenInput.value.trim();
 
-  if (!username || !account) {
+  if (!state.currentUser || !state.sessionToken) {
     setAccountStatus("No active account is logged in.", true);
     return;
   }
 
-  if (!canvasDomain || !canvasToken) {
-    setAccountStatus("Canvas domain and token are required.", true);
+  if (!canvasDomain) {
+    setAccountStatus("Canvas domain is required.", true);
     return;
   }
 
   setAccountStatus("Verifying updated Canvas settings...", false);
-  const validation = await validateCanvasCredentials(canvasDomain, canvasToken);
-  if (!validation.ok) {
-    setAccountStatus(validation.message, true);
-    return;
-  }
 
-  accounts[username] = {
-    ...account,
-    canvasDomain,
-    canvasToken,
-    updatedAt: new Date().toISOString()
-  };
-  localStorage.setItem(STORAGE_KEYS.accounts, JSON.stringify(accounts));
-  applyAccountSession(username, accounts[username]);
-  setAccountStatus("Saved. Future logins will use the updated Canvas details.", false);
-  await loadDashboard(false);
+  try {
+    const data = await authFetch("/api/auth/update-canvas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ canvasDomain, canvasToken })
+    });
+    applyAccountSession(data.account.username, data.account, state.sessionToken);
+    setAccountStatus(
+      canvasToken
+        ? "Saved. Future logins will use the updated Canvas details."
+        : "Saved. Existing stored token was kept.",
+      false
+    );
+    await loadDashboard(false);
+  } catch (error) {
+    setAccountStatus(error.message || "Canvas update failed.", true);
+  }
 }
 
 async function saveProfileSettings() {
   const currentUsername = state.currentUser;
-  const accounts = getAccounts();
-  const account = accounts[currentUsername];
   const nextUsername = normalizeUsername(elements.settingsUsernameInput.value);
   const nextPassword = elements.settingsPasswordInput.value.trim();
 
-  if (!currentUsername || !account) {
+  if (!currentUsername || !state.sessionToken) {
     setProfileSettingsStatus("No active account is logged in.", true);
     return;
   }
@@ -348,37 +341,31 @@ async function saveProfileSettings() {
     return;
   }
 
-  const nextAccount = {
-    ...account,
-    username: nextUsername,
-    updatedAt: new Date().toISOString()
-  };
+  try {
+    const data = await authFetch("/api/auth/update-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: nextUsername, password: nextPassword })
+    });
 
-  if (nextPassword) {
-    const salt = createSalt();
-    nextAccount.passwordSalt = salt;
-    nextAccount.passwordHash = await hashPassword(nextPassword, salt);
+    if (nextUsername !== currentUsername) {
+      migrateUserScopedStorage(currentUsername, nextUsername);
+    }
+
+    localStorage.setItem(STORAGE_KEYS.sessionToken, data.token);
+    applyAccountSession(nextUsername, data.account, data.token);
+    state.dashboardTab = "settings";
+    renderDashboard();
+
+    setProfileSettingsStatus(
+      nextPassword
+        ? "Saved your username and password."
+        : "Saved your username.",
+      false
+    );
+  } catch (error) {
+    setProfileSettingsStatus(error.message || "Profile update failed.", true);
   }
-
-  delete accounts[currentUsername];
-  accounts[nextUsername] = nextAccount;
-  localStorage.setItem(STORAGE_KEYS.accounts, JSON.stringify(accounts));
-
-  if (nextUsername !== currentUsername) {
-    migrateUserScopedStorage(currentUsername, nextUsername);
-  }
-
-  localStorage.setItem(STORAGE_KEYS.currentUser, nextUsername);
-  applyAccountSession(nextUsername, nextAccount);
-  state.dashboardTab = "settings";
-  renderDashboard();
-
-  setProfileSettingsStatus(
-    nextPassword
-      ? "Saved your username and password."
-      : "Saved your username.",
-    false
-  );
 }
 
 function setAccountStatus(message, isError) {
@@ -391,40 +378,17 @@ function setProfileSettingsStatus(message, isError) {
   elements.profileSettingsStatus.style.color = isError ? "var(--danger)" : "var(--muted)";
 }
 
-async function validateCanvasCredentials(canvasDomain, canvasToken) {
-  try {
-    const response = await fetch(apiUrl("/api/canvas/context"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ canvasDomain, canvasToken })
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      return { ok: false, message: data.error || "Failed to connect to Canvas." };
-    }
-    return { ok: true };
-  } catch (error) {
-    return { ok: false, message: error.message || "Failed to connect to Canvas." };
-  }
-}
-
 async function loadDashboard(fromAuth) {
-  if (!state.settings.canvasDomain || !state.settings.canvasToken) {
+  if (!state.settings.canvasDomain || !state.sessionToken) {
     showSetup();
-    setStatus("error", "This account is missing a saved Canvas domain or token.");
+    setStatus("error", "This account is missing a saved session or Canvas connection.");
     return;
   }
 
   setStatus("loading", fromAuth ? "Connecting to Canvas and building your dashboard..." : "Refreshing Canvas data...");
 
   try {
-    const response = await fetch(apiUrl("/api/canvas/context"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state.settings)
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to load Canvas data.");
+    const data = await authFetch("/api/canvas/context", { method: "POST" });
 
     state.context = data.context;
     state.essayCoach = null;
@@ -457,9 +421,9 @@ function renderDashboard() {
   elements.settingsUsernameInput.value = state.currentUser || "";
   elements.settingsPasswordInput.value = "";
   elements.settingsDomainInput.value = state.settings.canvasDomain || "";
-  elements.settingsTokenInput.value = state.settings.canvasToken || "";
+  elements.settingsTokenInput.value = "";
   setProfileSettingsStatus("Update your login details here. Existing dashboard data will follow your account if the username changes.", false);
-  setAccountStatus("Saved changes update this account and keep future logins connected.", false);
+  setAccountStatus("Saved changes update this account. Leave the token blank to keep the stored token.", false);
   setDashboardTab(state.dashboardTab || "planner");
 }
 
@@ -965,6 +929,19 @@ function apiUrl(path) {
   if (!configuredBase) return path;
   return `${configuredBase.replace(/\/+$/, "")}${path}`;
 }
+
+async function fetchJson(path, options = {}) {
+  const response = await fetch(apiUrl(path), options);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Request failed.");
+  return data;
+}
+
+async function authFetch(path, options = {}, token = state.sessionToken) {
+  if (!token) throw new Error("Unauthorized.");
+  const headers = { ...(options.headers || {}), Authorization: `Bearer ${token}` };
+  return fetchJson(path, { ...options, headers });
+}
 function resetEssayCoach() {
   state.essayCoach = null;
   if (elements.essayBtn) elements.essayBtn.textContent = "Start Essay Coaching";
@@ -976,10 +953,11 @@ function setStatus(type, message) {
 }
 
 function logout() {
-  localStorage.removeItem(STORAGE_KEYS.currentUser);
+  localStorage.removeItem(STORAGE_KEYS.sessionToken);
   state.context = null;
   state.currentUser = "";
-  state.settings = { canvasDomain: "", canvasToken: "" };
+  state.sessionToken = "";
+  state.settings = { canvasDomain: "", hasCanvasToken: false };
   state.hiddenCourses = [];
   state.completedAssignments = [];
   state.customEvents = [];
@@ -1703,12 +1681,6 @@ function readJson(key, fallback) {
   }
 }
 
-function getAccounts() {
-  const raw = readJson(STORAGE_KEYS.accounts, {});
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
-  return raw;
-}
-
 function userScopedKey(suffix) {
   return `canvasDashboard:${state.currentUser || "guest"}:${suffix}`;
 }
@@ -1736,18 +1708,6 @@ function normalizeUsername(value) {
 
 function normalizeDomain(value) {
   return String(value || "").trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-}
-
-function createSalt() {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
-}
-
-async function hashPassword(password, salt) {
-  const data = new TextEncoder().encode(`${salt}:${password}`);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function qs(selector) { return document.querySelector(selector); }
