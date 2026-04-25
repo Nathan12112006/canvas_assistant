@@ -14,8 +14,13 @@ const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "*")
   .map(value => value.trim())
   .filter(Boolean);
 const PUBLIC_DIR = path.join(__dirname, "public");
-const DATA_DIR = path.join(__dirname, "data");
-const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
+const DEFAULT_DATA_DIR = path.join(__dirname, "data");
+const CONFIGURED_DATA_DIR = String(process.env.DATA_DIR || "").trim();
+const ACCOUNT_STORAGE_FILE = String(process.env.ACCOUNT_STORAGE_FILE || "").trim();
+const DATA_DIR = ACCOUNT_STORAGE_FILE
+  ? path.dirname(ACCOUNT_STORAGE_FILE)
+  : (CONFIGURED_DATA_DIR || DEFAULT_DATA_DIR);
+const ACCOUNTS_FILE = ACCOUNT_STORAGE_FILE || path.join(DATA_DIR, "accounts.json");
 
 if (!OPENAI_API_KEY) {
   console.error("Missing OPENAI_API_KEY.");

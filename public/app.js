@@ -331,11 +331,6 @@ async function saveProfileSettings() {
     return;
   }
 
-  if (nextUsername !== currentUsername && accounts[nextUsername]) {
-    setProfileSettingsStatus("That username already exists.", true);
-    return;
-  }
-
   if (nextPassword && nextPassword.length < 6) {
     setProfileSettingsStatus("Choose a password with at least 6 characters.", true);
     return;

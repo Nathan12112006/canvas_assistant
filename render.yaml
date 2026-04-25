@@ -7,6 +7,10 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    disks:
+      - name: canvas-assistant-data
+        mountPath: /var/data
+        sizeGB: 1
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -14,3 +18,5 @@ services:
         value: gpt-4.1-mini
       - key: ALLOWED_ORIGINS
         sync: false
+      - key: DATA_DIR
+        value: /var/data
