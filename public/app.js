@@ -1105,12 +1105,16 @@ function firstRelevantDate() {
   return items[0] ? new Date(itemDateValue(items[0])) : new Date();
 }
 
+function currentCalendarAnchorMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
 function calendarBaseDate() {
   if (state.calendarMonthCursor) {
-    return new Date(state.calendarMonthCursor);
+    return clampCalendarMonth(new Date(state.calendarMonthCursor));
   }
-  const first = firstRelevantDate();
-  const base = new Date(first.getFullYear(), first.getMonth(), 1);
+  const base = currentCalendarAnchorMonth();
   state.calendarMonthCursor = base.toISOString();
   return base;
 }
@@ -1607,8 +1611,7 @@ function calendarWindowMonths() {
 }
 
 function calendarWindowAnchor() {
-  const first = firstRelevantDate();
-  return new Date(first.getFullYear(), first.getMonth(), 1);
+  return currentCalendarAnchorMonth();
 }
 
 function clampCalendarMonth(value) {
